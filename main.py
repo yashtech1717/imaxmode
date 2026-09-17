@@ -228,7 +228,7 @@ def health_check():
         "service": "AURA Cinematic Portal",
         "version": "2.0.0",
         "database": "postgresql" if os.environ.get("DATABASE_URL") else "sqlite",
-        "cloud_storage": bool(os.environ.get("CLOUDINARY_URL"))
+        "cloud_storage": bool(os.environ.get("SUPABASE_URL"))
     }
 
 if __name__ == "__main__":
