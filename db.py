@@ -15,11 +15,19 @@ if DATABASE_URL.startswith("postgres://"):
 IS_POSTGRES = bool(DATABASE_URL)
 
 def get_connection():
+    global IS_POSTGRES
     if IS_POSTGRES:
-        import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
-        return conn
+        try:
+            import psycopg2
+            import psycopg2.extras
+            conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor, connect_timeout=5)
+            return conn
+        except Exception as err:
+            logger.error(f"PostgreSQL connection failed ({err}). Gracefully falling back to local SQLite database.")
+            IS_POSTGRES = False
+            conn = sqlite3.connect(DB_FILE)
+            conn.row_factory = sqlite3.Row
+            return conn
     else:
         conn = sqlite3.connect(DB_FILE)
         conn.row_factory = sqlite3.Row
