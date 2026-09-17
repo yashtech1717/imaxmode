@@ -10,6 +10,9 @@ os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # Supabase Storage Configuration
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+if "/rest/v1" in SUPABASE_URL:
+    SUPABASE_URL = SUPABASE_URL.split("/rest/v1")[0].rstrip("/")
+
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip() or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "memories").strip()
 
