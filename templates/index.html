@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>HAPPY BIRTHDAY YASH // NEXT LEVEL UI/UX</title>
+    
+    <!-- Mobile Status Bar & Fullscreen Meta -->
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+
+    <!-- Modern Geometric Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="theme-crimson">
+    <!-- Cinematic VFX Particles Canvas (Floating Embers, Touch Trails, Fireworks & Supernova) -->
+    <canvas id="vfxCanvas"></canvas>
+
+    <!-- Dark Vignette & Ambient Spotlight -->
+    <div class="ambient-spotlight" id="ambientSpotlight"></div>
+    <div class="anamorphic-flare" id="anamorphicFlare"></div>
+    <div class="screen-vignette"></div>
+
+    <!-- Supernova Flash Overlay -->
+    <div class="supernova-flash" id="supernovaFlash"></div>
+
+    <!-- HEADER CONTROL STRIP -->
+    <header class="cinema-header-strip">
+        <div class="header-left">
+            <button class="cinema-control-btn btn-fullscreen" id="fullscreenBtn" title="Toggle Fullscreen Cinema Mode">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                <span id="fullscreenLabel">IMAX MODE</span>
+            </button>
+        </div>
+
+        <div class="header-center" id="authControls" style="display: none;">
+            <div class="user-chip" id="userChip">
+                <span class="user-chip-dot"></span>
+                <span id="userChipName">YASH</span>
+            </div>
+            <button class="cinema-control-btn btn-studio" id="adminStudioBtn" style="display: none;" title="Open Yash Studio CMS">
+                <span class="pulse-spark">✦</span>
+                <span>⚙ STUDIO</span>
+            </button>
+            <button class="cinema-control-btn btn-view-replies" id="adminViewRepliesBtn" style="display: none;" title="View Glory's Replies with Uploaded Memories">
+                <span class="pulse-spark">📬</span>
+                <span>REPLIES (<span id="headerRepliesCount">0</span>)</span>
+            </button>
+            <button class="cinema-control-btn btn-reply" id="gloryReplyBtn" style="display: none;" title="Reply to Yash">
+                <span class="pulse-spark">💌</span>
+                <span>REPLY TO YASH</span>
+            </button>
+            <button class="cinema-control-btn btn-logout" id="logoutBtn" title="Log Out">
+                <span>⎋ EXIT</span>
+            </button>
+        </div>
+
+        <div class="header-right">
+            <button class="cinema-control-btn btn-audio" id="soundToggleBtn" title="Toggle Cinematic Sound">
+                <span class="sound-wave-icon">
+                    <span></span><span></span><span></span><span></span>
+                </span>
+                <span id="soundLabel">AUDIO ON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN SCENE -->
+    <main class="scene-container" id="sceneContainer">
+        <!-- Giant Matte Graphite Typography (Blazes into golden glory on Supernova!) -->
+        <div class="giant-backdrop-text" id="giantBackdrop">
+            <span class="giant-word" id="giantWord">YASH</span>
+        </div>
+
+        <!-- Foreground High-Impact Cinematic Layer -->
+        <div class="foreground-content" id="foregroundContent">
+            <!-- Top Cyber Red Trim Accent Line -->
+            <div class="cyber-accent-bar">
+                <span class="theme-line red-line"></span>
+                <span class="cyber-badge" id="topBadgeText">NEXT LEVEL UI / UX</span>
+                <span class="theme-line red-line"></span>
+            </div>
+
+            <!-- Primary Headline -->
+            <h2 class="sub-headline">
+                <span class="word" id="headlineWord1">HAPPY</span>
+                <span class="word" id="headlineWord2">BIRTHDAY</span>
+            </h2>
+
+            <!-- Typing Paragraph Box (Types then smoothly collapses) -->
+            <div class="typing-container" id="typingContainer">
+                <div class="typed-message-wrapper">
+                    <span class="typed-text" id="typedText" data-text="Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH."></span><span class="typing-cursor"></span>
+                </div>
+                <div class="laser-trim"></div>
+            </div>
+
+            <!-- Chapter Journey Stage (With Cinematic Staged Animation) -->
+            <div class="chapter-stage" id="chapterStage">
+                <!-- Staged Progress Dots with Dynamic Laser Runner Spark -->
+                <div class="backdrop-dots-track" id="backdropDots">
+                    <div class="track-line-bg"></div>
+                    <div class="track-line-active" id="trackLineActive"></div>
+                    <div class="track-spark-runner" id="trackSparkRunner"></div>
+
+                    <div class="b-dots-container" id="dotsContainer">
+                        <span class="b-dot active" data-step="0">
+                            <span class="b-dot-num">01</span>
+                            <span class="b-dot-ripple"></span>
+                        </span>
+                        <span class="b-dot" data-step="1">
+                            <span class="b-dot-num">02</span>
+                            <span class="b-dot-ripple"></span>
+                        </span>
+                        <span class="b-dot" data-step="2">
+                            <span class="b-dot-num">03</span>
+                            <span class="b-dot-ripple"></span>
+                        </span>
+                        <span class="b-dot" data-step="3">
+                            <span class="b-dot-num">04</span>
+                            <span class="b-dot-ripple"></span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Pure Cinematic Chapter Card with Holographic Laser Sheen -->
+                <div class="chapter-card-outer" id="cardOuter">
+                    <div class="card-holo-sheen" id="cardHoloSheen"></div>
+                    <div class="chapter-card" id="chapterCard">
+                        <div class="chapter-meta">
+                            <span class="chapter-badge" id="cardStepBadge">// CHAPTER 01</span>
+                            <span class="chapter-counter" id="cardStepCounter">01 / 04</span>
+                        </div>
+
+                        <!-- Scramble Decoder Title -->
+                        <h3 class="chapter-title" id="cardStepTitle" data-original="THE VISIONARY">THE VISIONARY</h3>
+                        
+                        <p class="chapter-body" id="cardStepBody">
+                            Every masterpiece begins with bold vision. Your creativity, relentless drive, and dedication to excellence transform ideas into reality. Keep dreaming big, YASH.
+                        </p>
+
+                        <!-- Attached Media Trigger Button (Never auto-plays: click to show image/audio/video) -->
+                        <div class="card-media-trigger-wrap" id="cardMediaTriggerWrap" style="display: none;">
+                            <button class="btn-card-media" id="cardMediaBtn">
+                                <span class="media-btn-pulse"></span>
+                                <span class="media-btn-icon" id="cardMediaIcon">👁</span>
+                                <span class="media-btn-text" id="cardMediaLabel">SHOW IMAGE</span>
+                            </button>
+                        </div>
+
+                        <!-- Interactive Supernova Ignite Button (Revealed on Finale Chapter 04) -->
+                        <div class="supernova-ignite-wrap" id="igniteWrap" style="display: none;">
+                            <button class="btn-supernova" id="supernovaBtn">
+                                <span class="supernova-glow-ring"></span>
+                                <span class="supernova-sparkle">✦</span>
+                                <span>IGNITE CELEBRATION</span>
+                                <span class="supernova-sparkle">✦</span>
+                            </button>
+                        </div>
+
+                        <!-- Precision Theme Laser Trim -->
+                        <div class="laser-trim"></div>
+
+                        <!-- Clean Action Row with Next Button -->
+                        <div class="chapter-actions">
+                            <button class="btn-step-nav btn-prev" id="prevStepBtn" style="visibility: hidden;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                                <span>Back</span>
+                            </button>
+                            <button class="btn-step-nav btn-next" id="nextStepBtn">
+                                <span id="nextBtnText">Next Chapter</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Dedicated Below-Card Reply Trigger for Viewer (Glory) -->
+                        <div class="card-reply-trigger-wrap" id="cardReplyTriggerWrap" style="display: none;">
+                            <button class="btn-card-reply" id="cardReplyBtn" title="Send a wish or message to Yash about this memory">
+                                <span class="reply-sparkle">💌</span>
+                                <span id="cardReplyBtnLabel">Reply to Yash on this Memory</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Specs & Details -->
+            <div class="cinematic-specs">
+                <span class="spec-pill" id="specPill1">CINEMATIC EDITION</span>
+                <span class="spec-dot" id="specDot">•</span>
+                <span class="spec-pill" id="specPill2">LEVEL 2026</span>
+            </div>
+        </div>
+
+        <!-- Mobile Touch Interaction Hint -->
+        <div class="mobile-touch-hint" id="touchHint">
+            <span class="touch-dot"></span>
+            <span>TOUCH & DRAG FOR STARDUST</span>
+        </div>
+    </main>
+
+    <!-- ========================================================================== -->
+    <!-- 1. CINEMATIC LOGIN PORTAL MODAL                                            -->
+    <!-- ========================================================================== -->
+    <div class="portal-overlay" id="loginModal">
+        <div class="portal-card" id="loginCard">
+            <div class="portal-card-sheen"></div>
+            
+            <div class="portal-header">
+                <div class="cyber-accent-bar" style="margin-bottom: 12px;">
+                    <span class="theme-line red-line"></span>
+                    <span class="cyber-badge">// SYSTEM ACCESS // 2026 EDITION</span>
+                    <span class="theme-line red-line"></span>
+                </div>
+                <h2 class="portal-title">AURA PORTAL</h2>
+                <p class="portal-subtitle">Enter credentials to unlock the cinematic birthday experience</p>
+            </div>
+
+            <form id="loginForm" class="portal-form">
+                <div class="form-group">
+                    <label for="loginUsername">ID / USERNAME</label>
+                    <div class="input-glow-wrap">
+                        <input type="text" id="loginUsername" placeholder="e.g. yash or Glory" required autocomplete="username">
+                        <span class="input-focus-line"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">ACCESS KEY / PASSWORD</label>
+                    <div class="input-glow-wrap">
+                        <input type="password" id="loginPassword" placeholder="••••••••••••" required autocomplete="current-password">
+                        <span class="input-focus-line"></span>
+                    </div>
+                </div>
+
+                <div class="form-error-msg" id="loginErrorMsg" style="display: none;"></div>
+
+                <button type="submit" class="btn-portal-submit" id="loginSubmitBtn">
+                    <span class="btn-glow-layer"></span>
+                    <span>ACCESS PORTAL</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </form>
+
+            <div class="portal-hints">
+                <div class="hint-row">
+                    <span class="hint-badge admin">ADMIN</span>
+                    <span class="hint-text">User: <strong>yash</strong> | Pass: <strong>yashadmin17</strong></span>
+                </div>
+                <div class="hint-row">
+                    <span class="hint-badge viewer">VIEWER</span>
+                    <span class="hint-text">User: <strong>Glory</strong> | Pass: <strong>lory</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 2. ADMIN STUDIO CMS DRAWER (YASH)                                          -->
+    <!-- ========================================================================== -->
+    <div class="studio-drawer-backdrop" id="adminDrawerBackdrop">
+        <aside class="studio-drawer" id="adminDrawer">
+            <div class="studio-drawer-header">
+                <div class="drawer-heading">
+                    <span class="cyber-badge">// CONTROL STATION</span>
+                    <h3 class="studio-title">⚙ YASH ADMIN STUDIO</h3>
+                </div>
+                <button class="btn-drawer-close" id="adminDrawerCloseBtn" title="Close Studio">✕</button>
+            </div>
+
+            <!-- Studio Tabs Navigation -->
+            <nav class="studio-nav">
+                <button class="studio-tab-btn active" data-tab="tabTexts">
+                    <span>General Texts</span>
+                </button>
+                <button class="studio-tab-btn" data-tab="tabChapters">
+                    <span>Dot Cards & Media</span>
+                </button>
+                <button class="studio-tab-btn" data-tab="tabReplies">
+                    <span>Glory's Replies</span>
+                    <span class="tab-badge-counter" id="repliesBadgeCount">0</span>
+                </button>
+            </nav>
+
+            <div class="studio-tab-content">
+                <!-- TAB 1: General Texts -->
+                <section class="tab-pane active" id="tabTexts">
+                    <form id="adminTextsForm">
+                        <div class="form-group">
+                            <label>HEADLINE WORD 1</label>
+                            <input type="text" id="adminHeadline1" placeholder="HAPPY">
+                        </div>
+                        <div class="form-group">
+                            <label>HEADLINE WORD 2</label>
+                            <input type="text" id="adminHeadline2" placeholder="BIRTHDAY">
+                        </div>
+                        <div class="form-group">
+                            <label>GIANT BACKDROP NAME / WORD</label>
+                            <input type="text" id="adminGiantWord" placeholder="YASH">
+                        </div>
+                        <div class="form-group">
+                            <label>TOP CYBER BADGE</label>
+                            <input type="text" id="adminTopBadge" placeholder="NEXT LEVEL UI / UX">
+                        </div>
+                        <div class="form-group">
+                            <label>TYPEWRITER PARAGRAPH MESSAGE</label>
+                            <textarea id="adminTypingText" rows="4" placeholder="Wishing you a year of limitless innovation..."></textarea>
+                        </div>
+                        <button type="submit" class="btn-studio-save">
+                            <span>💾 SAVE SITE TEXTS</span>
+                        </button>
+                    </form>
+                </section>
+
+                <!-- TAB 2: Dot Cards & Media Upload -->
+                <section class="tab-pane" id="tabChapters">
+                    <div class="chapter-selector-wrapper">
+                        <div class="chapter-selector-bar" id="chapterSelectorBar">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                        <button type="button" class="btn-add-chapter" id="addChapterBtn" title="Add a new milestone chapter card">
+                            <span>+ ADD CARD</span>
+                        </button>
+                    </div>
+
+                    <form id="adminChapterForm">
+                        <input type="hidden" id="adminCurrentStepIndex" value="0">
+                        <div class="form-group">
+                            <label>CARD BADGE</label>
+                            <input type="text" id="adminCardBadge" placeholder="// CHAPTER 01">
+                        </div>
+                        <div class="form-group">
+                            <label>CARD COUNTER</label>
+                            <input type="text" id="adminCardCounter" placeholder="01 / 04">
+                        </div>
+                        <div class="form-group">
+                            <label>CARD TITLE</label>
+                            <input type="text" id="adminCardTitle" placeholder="THE VISIONARY">
+                        </div>
+                        <div class="form-group">
+                            <label>CARD BODY MESSAGE</label>
+                            <textarea id="adminCardBody" rows="4" placeholder="Card message..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>THEME ACCENT</label>
+                            <select id="adminCardTheme">
+                                <option value="theme-crimson">Crimson Red</option>
+                                <option value="theme-gold">Radiant Gold</option>
+                                <option value="theme-cyan">Electric Cyan</option>
+                                <option value="theme-aurora">Supernova Aurora</option>
+                            </select>
+                        </div>
+
+                        <!-- Media Attachment Box with Live Visual Preview -->
+                        <div class="media-upload-box">
+                            <label class="media-box-label">ATTACHED MEDIA (IMAGE / VIDEO / AUDIO)</label>
+                            <div class="current-media-status" id="currentMediaStatus">
+                                <span class="status-indicator">●</span>
+                                <span id="currentMediaText">No media attached</span>
+                            </div>
+
+                            <!-- Live In-Editor Media Preview -->
+                            <div class="editor-media-preview-wrap" id="editorMediaPreviewWrap" style="display: none;">
+                                <div class="editor-preview-frame">
+                                    <img id="editorImagePreview" src="" alt="Photo Preview" style="display: none;">
+                                    <video id="editorVideoPreview" controls playsinline preload="metadata" style="display: none;"></video>
+                                    <div class="editor-audio-preview" id="editorAudioPreviewBox" style="display: none;">
+                                        <span class="audio-note-icon">♫</span>
+                                        <audio id="editorAudioPreview" controls preload="metadata"></audio>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="upload-actions">
+                                <label class="btn-file-picker">
+                                    <span>📁 CHOOSE FILE (PHOTO / VIDEO / AUDIO)</span>
+                                    <input type="file" id="adminFileInput" accept="image/*,video/*,audio/*" style="display: none;">
+                                </label>
+                                <button type="button" class="btn-media-remove" id="adminRemoveMediaBtn" style="display: none;">
+                                    <span>✕ DETACH MEDIA</span>
+                                </button>
+                            </div>
+                            <div class="upload-progress-bar" id="uploadProgress" style="display: none;">
+                                <div class="upload-progress-fill" id="uploadProgressFill"></div>
+                            </div>
+                        </div>
+
+                        <div class="chapter-form-actions">
+                            <button type="submit" class="btn-studio-save">
+                                <span>💾 SAVE CARD</span>
+                            </button>
+                            <button type="button" class="btn-studio-delete" id="adminDeleteChapterBtn" title="Delete this card">
+                                <span>🗑 DELETE CARD</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- TAB 3: Glory's Replies Inbox -->
+                <section class="tab-pane" id="tabReplies">
+                    <div class="replies-header">
+                        <span class="cyber-badge">// INBOX</span>
+                        <button type="button" class="btn-refresh-replies" id="refreshRepliesBtn">↺ REFRESH</button>
+                    </div>
+                    <div class="replies-list" id="adminRepliesList">
+                        <div class="empty-replies">Loading messages...</div>
+                    </div>
+                </section>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 3. GLORY'S WISH & REPLY MODAL                                              -->
+    <!-- ========================================================================== -->
+    <div class="modal-backdrop" id="replyModal" style="display: none;">
+        <div class="modal-box reply-box">
+            <div class="portal-card-sheen"></div>
+            <div class="modal-header">
+                <div class="cyber-accent-bar" style="margin-bottom: 8px;">
+                    <span class="theme-line red-line"></span>
+                    <span class="cyber-badge">// SECURE TRANSMISSION</span>
+                    <span class="theme-line red-line"></span>
+                </div>
+                <h3 class="modal-title">WISH & REPLY TO YASH</h3>
+                <p class="modal-subtitle">Your message will be sent directly to Yash's admin studio</p>
+                <button class="btn-modal-close" id="replyModalCloseBtn">✕</button>
+            </div>
+            
+            <form id="gloryReplyForm">
+                <div class="form-group">
+                    <label>SENDER</label>
+                    <input type="text" id="glorySenderName" value="Glory" readonly class="input-readonly">
+                </div>
+                <div class="form-group reply-card-context-wrap" id="replyCardContextWrap" style="display: none;">
+                    <label>REGARDING MILESTONE</label>
+                    <div class="reply-context-pill">
+                        <span class="context-tag" id="replyContextTag">// CHAPTER 01</span>
+                        <span class="context-title" id="replyContextTitle">THE VISIONARY</span>
+                    </div>
+                    <input type="hidden" id="gloryChapterIndex" value="">
+                    <input type="hidden" id="gloryChapterTitle" value="">
+                </div>
+                <div class="form-group">
+                    <label>YOUR BIRTHDAY WISH / MESSAGE FOR YASH</label>
+                    <textarea id="gloryMessageText" rows="5" placeholder="Write your heartfelt message, memory, or wish for Yash here..." required></textarea>
+                </div>
+                <button type="submit" class="btn-portal-submit" id="glorySubmitBtn">
+                    <span class="btn-glow-layer"></span>
+                    <span>TRANSMIT TO YASH</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 4. CINEMA MEDIA LIGHTBOX / PLAYER MODAL                                    -->
+    <!-- ========================================================================== -->
+    <div class="modal-backdrop media-lightbox-backdrop" id="mediaModal" style="display: none;">
+        <div class="modal-box media-lightbox-box">
+            <div class="modal-header media-box-header">
+                <div class="media-title-group">
+                    <span class="cyber-badge" id="mediaBadgeLabel">// MEMORY HIGHLIGHT</span>
+                    <h3 class="media-title-text" id="mediaTitleText">CHAPTER MEDIA</h3>
+                </div>
+                <button class="btn-modal-close" id="mediaModalCloseBtn">✕ CLOSE</button>
+            </div>
+
+            <div class="media-viewport" id="mediaViewport">
+                <!-- Image Container -->
+                <div class="media-pane-image" id="mediaPaneImage" style="display: none;">
+                    <img id="lightboxImage" src="" alt="Memory Photograph">
+                </div>
+
+                <!-- Video Container -->
+                <div class="media-pane-video" id="mediaPaneVideo" style="display: none;">
+                    <video id="lightboxVideo" controls playsinline preload="metadata">
+                        <source id="lightboxVideoSrc" src="" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+
+                <!-- Audio Container -->
+                <div class="media-pane-audio" id="mediaPaneAudio" style="display: none;">
+                    <div class="audio-disc-visualizer">
+                        <div class="disc-glow-ring"></div>
+                        <span class="audio-icon-glyph">♫</span>
+                    </div>
+                    <h4 class="audio-track-title" id="lightboxAudioTitle">Audio Message</h4>
+                    <audio id="lightboxAudio" controls preload="metadata"></audio>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 5. ADMIN DEDICATED REPLIES & UPLOADED MEMORIES VIEWER MODAL                -->
+    <!-- ========================================================================== -->
+    <div class="modal-backdrop replies-modal-backdrop" id="adminRepliesModal" style="display: none;">
+        <div class="modal-box replies-viewer-box">
+            <div class="modal-header replies-viewer-header">
+                <div class="media-title-group">
+                    <span class="cyber-badge">// INBOX & MEMORY CONTEXT</span>
+                    <h3 class="media-title-text">📬 GLORY'S REPLIES & WISHES</h3>
+                </div>
+                <div class="replies-header-actions">
+                    <button type="button" class="btn-refresh-replies" id="modalRefreshRepliesBtn">↺ REFRESH</button>
+                    <button class="btn-modal-close" id="adminRepliesModalCloseBtn">✕ CLOSE</button>
+                </div>
+            </div>
+
+            <div class="rich-replies-container" id="richRepliesContainer">
+                <div class="empty-replies">Loading replies with uploaded memory context...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="aura-toast" id="auraToast">
+        <span class="toast-spark">✦</span>
+        <span class="toast-msg" id="toastMsg">Operation completed</span>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+
