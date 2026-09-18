@@ -105,12 +105,30 @@ VALUES (
 )
 ON CONFLICT (id) DO UPDATE SET public = TRUE;
 
--- 2. Storage Policies: Allow public read access to all objects in 'memories' bucket
-CREATE POLICY "Public Read Access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'memories');
+-- 2. Storage Policies: Allow public read access and uploads to 'memories' bucket
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public Read Access'
+    ) THEN
+        CREATE POLICY "Public Read Access" ON storage.objects FOR SELECT USING (bucket_id = 'memories');
+    END IF;
 
--- 3. Storage Policies: Allow authenticated and service_role inserts into 'memories' bucket
-CREATE POLICY "Allow Uploads"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'memories');
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Allow Uploads'
+    ) THEN
+        CREATE POLICY "Allow Uploads" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'memories');
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Allow Updates'
+    ) THEN
+        CREATE POLICY "Allow Updates" ON storage.objects FOR UPDATE USING (bucket_id = 'memories');
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Allow Deletes'
+    ) THEN
+        CREATE POLICY "Allow Deletes" ON storage.objects FOR DELETE USING (bucket_id = 'memories');
+    END IF;
+END $$;

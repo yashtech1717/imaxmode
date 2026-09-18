@@ -23,13 +23,46 @@ def is_db_configured() -> bool:
     return bool(get_database_url())
 
 
+IS_RENDER = os.environ.get("RENDER") == "true" or os.environ.get("ENVIRONMENT", "").lower() == "production"
+
+
 def get_connection():
     """
-    Connects to Supabase PostgreSQL when DATABASE_URL is provided.
-    If DATABASE_URL is not set, gracefully uses local SQLite (texts.db)
-    so local development runs smoothly without 500 errors.
+    Connects to Supabase PostgreSQL via DATABASE_URL.
+    In production on Render: STRICTLY CLOUD-ONLY with ZERO local SQLite fallback.
+    In local development: Falls back to local texts.db only if DATABASE_URL is not set.
     """
     url = get_database_url()
+
+    # In production on Render, strictly require Supabase PostgreSQL
+    if IS_RENDER:
+        if not url:
+            msg = (
+                "FATAL: DATABASE_URL is not set on Render. "
+                "Supabase PostgreSQL is strictly required in production. "
+                "Local SQLite fallback is permanently disabled on Render to prevent ephemeral data loss."
+            )
+            logger.critical(msg)
+            raise RuntimeError(msg)
+
+        try:
+            import psycopg2
+            import psycopg2.extras
+            conn = psycopg2.connect(
+                url,
+                cursor_factory=psycopg2.extras.RealDictCursor,
+                connect_timeout=10
+            )
+            return conn
+        except Exception as err:
+            msg = (
+                f"FATAL: Failed to connect to Supabase PostgreSQL in production: {err}. "
+                "Refusing to fall back to ephemeral container storage."
+            )
+            logger.critical(msg)
+            raise RuntimeError(msg) from err
+
+    # If DATABASE_URL is provided in local environment, connect to PostgreSQL
     if url:
         try:
             import psycopg2
@@ -48,10 +81,11 @@ def get_connection():
             conn = sqlite3.connect(DB_FILE)
             conn.row_factory = sqlite3.Row
             return conn
-    else:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        return conn
+
+    # Local development machine without DATABASE_URL
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def is_conn_postgres(conn) -> bool:
