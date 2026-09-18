@@ -293,7 +293,7 @@ def run_supabase_diagnostic() -> dict:
                 is_pub = b_json.get("public", True)
                 results["storage_bucket"]["status"] = "SUCCESS"
                 results["storage_bucket"]["details"] = f"Bucket '{bucket_name}' verified (Public: {is_pub})"
-            elif b_res.status_code == 404:
+            elif b_res.status_code == 404 or (b_res.status_code == 400 and "NoSuchBucket" in b_res.text):
                 # Try to auto-create bucket programmatically if using service_role key
                 create_url = f"{supabase_url}/storage/v1/bucket"
                 create_payload = {"id": bucket_name, "name": bucket_name, "public": True}

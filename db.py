@@ -20,8 +20,13 @@ logger = logging.getLogger("aura.db")
 def get_database_url() -> str:
     """Retrieves and normalizes the Supabase PostgreSQL connection URL."""
     url = os.environ.get("DATABASE_URL", "").strip()
+    if not url:
+        return ""
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
+    if "supabase" in url and "sslmode" not in url:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}sslmode=require"
     return url
 
 

@@ -65,7 +65,7 @@ def check_storage_health() -> dict:
         res = requests.get(bucket_url, headers=headers, timeout=8)
         if res.status_code in [200, 201]:
             return {"status": "ok", "configured": True, "bucket": bucket, "public": True}
-        elif res.status_code == 404:
+        elif res.status_code == 404 or (res.status_code == 400 and "NoSuchBucket" in res.text):
             # Try to auto-create bucket programmatically if using service_role key
             create_url = f"{url}/storage/v1/bucket"
             create_payload = {"id": bucket, "name": bucket, "public": True}
@@ -75,7 +75,7 @@ def check_storage_health() -> dict:
             return {
                 "status": "error",
                 "configured": True,
-                "message": f"Bucket '{bucket}' not found. Please create public bucket '{bucket}' in Supabase Storage Dashboard."
+                "message": f"Bucket '{bucket}' not found (NoSuchBucket). Please create public bucket '{bucket}' in Supabase Storage Dashboard."
             }
         elif res.status_code == 401:
             return {"status": "error", "configured": True, "message": "Storage API rejected key (HTTP 401 Unauthorized)"}
