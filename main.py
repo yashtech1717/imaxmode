@@ -3,11 +3,13 @@ import logging
 import uuid
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from diagnostic import run_supabase_diagnostic, format_diagnostic_text, format_diagnostic_html
 from cloud_storage import upload_file, check_storage_health, is_storage_configured
 from db import (
     init_db,
@@ -95,39 +97,37 @@ class TextCreate(BaseModel):
 
 @app.on_event("startup")
 def on_startup():
-    logger.info("Initializing AURA Cloud Backend with Supabase...")
-    db_status = check_db_health()
-    storage_status = check_storage_health()
+    # Run full Supabase configuration & credential diagnostic
+    diag_result = run_supabase_diagnostic()
+    console_report = format_diagnostic_text(diag_result)
+    print("\n" + console_report + "\n")
 
-    if db_status.get("status") != "ok":
-        msg = f"[FATAL] Supabase PostgreSQL check failed: {db_status.get('message')}"
-        logger.critical(msg)
-        if os.environ.get("TEST_MODE") != "1":
-            raise RuntimeError(
-                f"{msg}. Supabase PostgreSQL is required. "
-                "Local SQLite fallback has been completely removed to prevent data loss."
-            )
+    # If Supabase Database URL is configured, initialize database schema
+    if is_db_configured():
+        db_status = check_db_health()
+        if db_status.get("status") == "ok":
+            logger.info("[SUPABASE DATABASE: CONNECTED] Host: %s", db_status.get('host'))
+            try:
+                init_db()
+            except Exception as err:
+                logger.error("Database schema init notice: %s", err)
+        else:
+            logger.warning("DATABASE_URL is set but connection check failed: %s", db_status.get('message'))
     else:
-        logger.info(f"[SUPABASE DATABASE: CONNECTED] Host: {db_status.get('host')}")
-        try:
-            init_db()
-        except Exception as err:
-            logger.critical(f"Failed to run init_db: {err}")
-            if os.environ.get("TEST_MODE") != "1":
-                raise
+        logger.info("[NOTICE] DATABASE_URL not set in local environment. Running in diagnostic mode.")
 
-    if storage_status.get("status") != "ok":
-        logger.warning(f"[SUPABASE STORAGE CHECK WARNING] {storage_status.get('message')}")
-    else:
-        logger.info(f"[SUPABASE STORAGE: CONNECTED] Bucket: '{storage_status.get('bucket')}'")
+# --- Supabase Diagnostic Endpoints ---
+@app.get("/diagnostic")
+def diagnostic_dashboard(request: Request):
+    diag = run_supabase_diagnostic()
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept and "text/html" not in accept:
+        return JSONResponse(diag)
+    return HTMLResponse(format_diagnostic_html(diag))
 
-    if db_status.get("status") == "ok" and storage_status.get("status") == "ok":
-        logger.info("================================================================")
-        logger.info("[SUPABASE CONFIGURATION: OK]")
-        logger.info("  Database: Supabase PostgreSQL (Strict Cloud)")
-        logger.info("  Storage:  Supabase Storage Bucket '%s' (Strict Cloud)", storage_status.get('bucket'))
-        logger.info("  Fallback: Local SQLite & Local Filesystem are PERMANENTLY DISABLED")
-        logger.info("================================================================")
+@app.get("/api/diagnostic")
+def diagnostic_api():
+    return run_supabase_diagnostic()
 
 # --- Root HTML Page ---
 @app.get("/")

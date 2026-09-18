@@ -179,5 +179,22 @@ class TestMockedCloudEndpoints(unittest.TestCase):
         self.assertEqual(len(data["data"]), 1)
 
 
+    def test_diagnostic_endpoints(self):
+        # Test HTML view
+        res_html = self.client.get("/diagnostic", headers={"Accept": "text/html"})
+        self.assertEqual(res_html.status_code, 200)
+        self.assertIn("Supabase Diagnostic Report", res_html.text)
+
+        # Test API JSON view
+        res_json = self.client.get("/api/diagnostic")
+        self.assertEqual(res_json.status_code, 200)
+        data = res_json.json()
+        self.assertIn("supabase_url", data)
+        self.assertIn("supabase_key", data)
+        self.assertIn("supabase_client", data)
+        self.assertIn("database_connection", data)
+        self.assertIn("storage_connection", data)
+
+
 if __name__ == "__main__":
     unittest.main()
