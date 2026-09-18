@@ -2,11 +2,18 @@
 AURA // Minimalist Dark Text Canvas Launcher (with Mobile Network Access)
 Run with: python run.py
 """
+import os
 import uvicorn
 import webbrowser
 import threading
 import time
 import socket
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 def get_local_ip():
     try:
