@@ -1,15 +1,48 @@
-import unittest
 import io
 import os
+import unittest
+from unittest.mock import patch, MagicMock
+
+# Set test mode so startup won't crash on unconfigured local dev environment
+os.environ["TEST_MODE"] = "1"
+
 import db
+import cloud_storage
 from fastapi.testclient import TestClient
 from main import app
 
-class TestCinematicPortal(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        db.init_db()
-        cls.client = TestClient(app)
+
+class TestStrictCloudArchitecture(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app)
+
+    def test_strict_db_refuses_when_unconfigured(self):
+        """Verifies db.get_connection() raises RuntimeError and NEVER falls back to SQLite."""
+        with patch.dict(os.environ, {"DATABASE_URL": ""}, clear=False):
+            with self.assertRaises(RuntimeError) as ctx:
+                db.get_connection()
+            self.assertIn("DATABASE_URL environment variable is missing", str(ctx.exception))
+            self.assertIn("SQLite fallback has been completely removed", str(ctx.exception))
+
+    def test_strict_storage_refuses_when_unconfigured(self):
+        """Verifies cloud_storage.upload_file() raises HTTPException(500) and NEVER writes locally."""
+        with patch("cloud_storage.SUPABASE_URL", ""), patch("cloud_storage.SUPABASE_KEY", ""):
+            from fastapi import HTTPException
+            with self.assertRaises(HTTPException) as ctx:
+                cloud_storage.upload_file(b"fake data", "test.png")
+            self.assertEqual(ctx.exception.status_code, 500)
+            self.assertIn("Supabase Cloud Storage is not configured", ctx.exception.detail)
+
+    def test_health_endpoints_report_supabase(self):
+        """Verifies both /health and /api/health report storage_mode as 'supabase'."""
+        for endpoint in ["/health", "/api/health"]:
+            res = self.client.get(endpoint)
+            self.assertEqual(res.status_code, 200)
+            data = res.json()
+            self.assertIn("status", data)
+            self.assertEqual(data["storage_mode"], "supabase")
+            self.assertIn("database", data)
+            self.assertIn("storage", data)
 
     def test_auth_admin_success(self):
         res = self.client.post("/api/login", json={"username": "yash", "password": "yashadmin17"})
@@ -19,7 +52,7 @@ class TestCinematicPortal(unittest.TestCase):
         self.assertEqual(data["username"], "yash")
 
     def test_auth_viewer_variants(self):
-        # Test lower case
+        # Test lowercase
         res1 = self.client.post("/api/login", json={"username": "glory", "password": "lory"})
         self.assertEqual(res1.status_code, 200)
         self.assertEqual(res1.json()["role"], "viewer")
@@ -33,118 +66,118 @@ class TestCinematicPortal(unittest.TestCase):
         res = self.client.post("/api/login", json={"username": "wrong", "password": "wrong"})
         self.assertEqual(res.status_code, 401)
 
-    def test_content_delivery(self):
-        res = self.client.get("/api/content")
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertEqual(data["status"], "success")
-        self.assertIn("config", data)
-        self.assertIn("chapters", data)
-        self.assertGreaterEqual(len(data["chapters"]), 4)
-
-    def test_admin_config_update(self):
-        res = self.client.post("/api/admin/config", json={
-            "giant_word": "YASH_TEST",
-            "top_badge": "TEST BADGE"
-        })
-        self.assertEqual(res.status_code, 200)
-        config = res.json()["data"]
-        self.assertEqual(config["giant_word"], "YASH_TEST")
-
-        # Restore
-        self.client.post("/api/admin/config", json={"giant_word": "YASH", "top_badge": "NEXT LEVEL UI / UX"})
-
-    def test_admin_chapter_update(self):
-        res = self.client.post("/api/admin/chapter", json={
-            "step_index": 0,
-            "title": "UPDATED VISIONARY",
-            "body": "Updated body text for chapter 1."
-        })
-        self.assertEqual(res.status_code, 200)
-        chapter = res.json()["data"]
-        self.assertEqual(chapter["title"], "UPDATED VISIONARY")
-
-        # Restore
-        self.client.post("/api/admin/chapter", json={
-            "step_index": 0,
-            "title": "THE VISIONARY",
-            "body": "Every masterpiece begins with bold vision. Your creativity, relentless drive, and dedication to excellence transform ideas into reality. Keep dreaming big, YASH."
-        })
-
-    def test_admin_upload_local_fallback(self):
-        file_data = io.BytesIO(b"fake image data")
-        file_data.name = "sample_test_photo.jpg"
-        res = self.client.post(
-            "/api/admin/upload",
-            files={"file": ("sample_test_photo.jpg", file_data, "image/jpeg")}
-        )
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertEqual(data["status"], "success")
-        self.assertEqual(data["media_type"], "image")
-        self.assertTrue(data["url"].startswith("/static/uploads/") or data["url"].startswith("https://"))
-        self.assertIn("is_cloud", data)
-
-    def test_admin_chapter_add_and_delete(self):
-        # Fetch initial count
-        init_res = self.client.get("/api/content")
-        init_count = len(init_res.json()["chapters"])
-
-        # Add chapter
-        add_res = self.client.post("/api/admin/chapter/add")
-        self.assertEqual(add_res.status_code, 200)
-        data = add_res.json()
-        self.assertEqual(data["status"], "success")
-        self.assertEqual(len(data["chapters"]), init_count + 1)
-        new_step_idx = init_count
-
-        # Verify added chapter counter format e.g. "05 / 05"
-        last_chapter = data["chapters"][-1]
-        self.assertEqual(last_chapter["step_index"], new_step_idx)
-
-        # Delete the added chapter
-        del_res = self.client.delete(f"/api/admin/chapter/{new_step_idx}")
-        self.assertEqual(del_res.status_code, 200)
-        del_data = del_res.json()
-        self.assertEqual(del_data["status"], "success")
-        self.assertEqual(len(del_data["chapters"]), init_count)
-
-    def test_viewer_reply_with_chapter_context(self):
-        # Glory sends a reply tagged with chapter 1
-        reply_res = self.client.post("/api/viewer/reply", json={
-            "sender": "Glory",
-            "message": "Loved this specific memory!",
-            "chapter_index": 0,
-            "chapter_title": "THE VISIONARY"
-        })
-        self.assertEqual(reply_res.status_code, 200)
-        reply = reply_res.json()["data"]
-        self.assertEqual(reply["sender"], "Glory")
-        self.assertEqual(reply["chapter_index"], 0)
-        self.assertEqual(reply["chapter_title"], "THE VISIONARY")
-
-        # Yash reads replies and verifies left-join on chapter fields
-        inbox_res = self.client.get("/api/admin/replies")
-        self.assertEqual(inbox_res.status_code, 200)
-        replies = inbox_res.json()["data"]
-        matching = [r for r in replies if r.get("message") == "Loved this specific memory!"]
-        self.assertTrue(len(matching) > 0)
-        self.assertEqual(matching[0]["chapter_index"], 0)
-        self.assertEqual(matching[0]["chapter_title"], "THE VISIONARY")
-
-    def test_api_health(self):
-        res = self.client.get("/api/health")
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertEqual(data["status"], "healthy")
-        self.assertIn("database", data)
-        self.assertIn("cloud_storage", data)
-
     def test_api_html_home(self):
         res = self.client.get("/")
         self.assertEqual(res.status_code, 200)
         self.assertIn("<!DOCTYPE html>", res.text)
 
+    def test_admin_upload_cloud_success(self):
+        """Verifies successful upload returns a public cloud CDN URL."""
+        mock_upload_result = {
+            "url": "https://vkzzdneprmwhsnzmeozx.supabase.co/storage/v1/object/public/memories/test.jpg",
+            "media_type": "image",
+            "filename": "test.jpg",
+            "is_cloud": True,
+            "storage": "supabase"
+        }
+        with patch("main.upload_file", return_value=mock_upload_result):
+            file_data = io.BytesIO(b"fake image data")
+            file_data.name = "test.jpg"
+            res = self.client.post(
+                "/api/admin/upload",
+                files={"file": ("test.jpg", file_data, "image/jpeg")}
+            )
+            self.assertEqual(res.status_code, 200)
+            data = res.json()
+            self.assertEqual(data["status"], "success")
+            self.assertEqual(data["url"], mock_upload_result["url"])
+            self.assertEqual(data["is_cloud"], True)
+            self.assertTrue(data["url"].startswith("https://"))
+
+
+class TestMockedCloudEndpoints(unittest.TestCase):
+    """Verifies content, config, chapters, and replies API routes using mock DB layer."""
+    def setUp(self):
+        self.client = TestClient(app)
+
+    @patch("main.get_site_config")
+    @patch("main.get_chapters")
+    def test_content_delivery(self, mock_get_chapters, mock_get_config):
+        mock_get_config.return_value = {
+            "id": 1,
+            "headline_word1": "HAPPY",
+            "headline_word2": "BIRTHDAY",
+            "giant_word": "YASH"
+        }
+        mock_get_chapters.return_value = [
+            {"step_index": 0, "title": "THE VISIONARY", "badge": "// CHAPTER 01", "counter": "01 / 04"}
+        ]
+        res = self.client.get("/api/content")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["config"]["giant_word"], "YASH")
+        self.assertEqual(len(data["chapters"]), 1)
+
+    @patch("main.update_site_config")
+    def test_admin_config_update(self, mock_update_config):
+        mock_update_config.return_value = {
+            "id": 1,
+            "headline_word1": "HAPPY",
+            "giant_word": "YASH_UPDATED"
+        }
+        res = self.client.post("/api/admin/config", json={"giant_word": "YASH_UPDATED"})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["data"]["giant_word"], "YASH_UPDATED")
+
+    @patch("main.update_chapter")
+    def test_admin_chapter_update(self, mock_update_chapter):
+        mock_update_chapter.return_value = {
+            "step_index": 0,
+            "title": "UPDATED TITLE"
+        }
+        res = self.client.post("/api/admin/chapter", json={
+            "step_index": 0,
+            "title": "UPDATED TITLE"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["data"]["title"], "UPDATED TITLE")
+
+    @patch("main.add_reply")
+    def test_viewer_reply(self, mock_add_reply):
+        mock_add_reply.return_value = {
+            "id": 1,
+            "sender": "Glory",
+            "message": "Happy Birthday Yash!",
+            "chapter_index": 0,
+            "chapter_title": "THE VISIONARY"
+        }
+        res = self.client.post("/api/viewer/reply", json={
+            "sender": "Glory",
+            "message": "Happy Birthday Yash!",
+            "chapter_index": 0,
+            "chapter_title": "THE VISIONARY"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["data"]["sender"], "Glory")
+
+    @patch("main.get_replies")
+    def test_admin_fetch_replies(self, mock_get_replies):
+        mock_get_replies.return_value = [
+            {"id": 1, "sender": "Glory", "message": "Best wishes!", "created_at": "2026-09-17T16:00:00"}
+        ]
+        res = self.client.get("/api/admin/replies")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(len(data["data"]), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
-

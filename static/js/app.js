@@ -1332,7 +1332,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (uploadProgressFill) uploadProgressFill.style.width = '100%';
 
                 const data = await res.json();
-                if (data.status === 'success') {
+                if (res.ok && data.status === 'success') {
                     tempMediaUrl = data.url;
                     tempMediaType = data.media_type;
                     tempMediaName = data.filename;
@@ -1341,10 +1341,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (adminRemoveMediaBtn) adminRemoveMediaBtn.style.display = 'inline-flex';
                     updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
                     showToast(`Media attached: ${data.filename} ✦`);
+                } else {
+                    const errorMsg = data.detail || 'Media upload failed. Ensure Supabase credentials are configured.';
+                    showToast(errorMsg);
                 }
             } catch (err) {
                 console.error(err);
-                showToast('Media upload failed.');
+                showToast('Network error during media upload.');
             } finally {
                 setTimeout(() => {
                     if (uploadProgress) uploadProgress.style.display = 'none';

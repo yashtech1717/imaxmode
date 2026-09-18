@@ -1,4 +1,5 @@
 import os
+import logging
 import uuid
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
@@ -7,10 +8,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from cloud_storage import upload_file
-
+from cloud_storage import upload_file, check_storage_health, is_storage_configured
 from db import (
     init_db,
+    check_db_health,
+    is_db_configured,
     get_site_config,
     update_site_config,
     get_chapters,
@@ -24,6 +26,9 @@ from db import (
     add_text,
     delete_text
 )
+
+logger = logging.getLogger("aura.server")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = FastAPI(
     title="AURA Cinematic 2-Role Birthday Canvas",
@@ -42,11 +47,9 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
 
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
-os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -92,7 +95,39 @@ class TextCreate(BaseModel):
 
 @app.on_event("startup")
 def on_startup():
-    init_db()
+    logger.info("Initializing AURA Cloud Backend with Supabase...")
+    db_status = check_db_health()
+    storage_status = check_storage_health()
+
+    if db_status.get("status") != "ok":
+        msg = f"[FATAL] Supabase PostgreSQL check failed: {db_status.get('message')}"
+        logger.critical(msg)
+        if os.environ.get("TEST_MODE") != "1":
+            raise RuntimeError(
+                f"{msg}. Supabase PostgreSQL is required. "
+                "Local SQLite fallback has been completely removed to prevent data loss."
+            )
+    else:
+        logger.info(f"[SUPABASE DATABASE: CONNECTED] Host: {db_status.get('host')}")
+        try:
+            init_db()
+        except Exception as err:
+            logger.critical(f"Failed to run init_db: {err}")
+            if os.environ.get("TEST_MODE") != "1":
+                raise
+
+    if storage_status.get("status") != "ok":
+        logger.warning(f"[SUPABASE STORAGE CHECK WARNING] {storage_status.get('message')}")
+    else:
+        logger.info(f"[SUPABASE STORAGE: CONNECTED] Bucket: '{storage_status.get('bucket')}'")
+
+    if db_status.get("status") == "ok" and storage_status.get("status") == "ok":
+        logger.info("================================================================")
+        logger.info("[SUPABASE CONFIGURATION: OK]")
+        logger.info("  Database: Supabase PostgreSQL (Strict Cloud)")
+        logger.info("  Storage:  Supabase Storage Bucket '%s' (Strict Cloud)", storage_status.get('bucket'))
+        logger.info("  Fallback: Local SQLite & Local Filesystem are PERMANENTLY DISABLED")
+        logger.info("================================================================")
 
 # --- Root HTML Page ---
 @app.get("/")
@@ -221,14 +256,20 @@ def remove_text(text_id: int):
         raise HTTPException(status_code=404, detail="Text item not found")
     return {"status": "success", "message": f"Text {text_id} deleted successfully"}
 
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
+    db_info = check_db_health()
+    storage_info = check_storage_health()
+    is_healthy = (db_info.get("status") == "ok" and storage_info.get("status") == "ok")
+
     return {
-        "status": "healthy",
+        "status": "healthy" if is_healthy else "degraded",
         "service": "AURA Cinematic Portal",
         "version": "2.0.0",
-        "database": "postgresql" if os.environ.get("DATABASE_URL") else "sqlite",
-        "cloud_storage": bool(os.environ.get("SUPABASE_URL"))
+        "storage_mode": "supabase",
+        "database": db_info,
+        "storage": storage_info
     }
 
 if __name__ == "__main__":
