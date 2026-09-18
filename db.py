@@ -215,24 +215,83 @@ def init_db():
             )
 
 
+DEFAULT_SITE_CONFIG: Dict[str, Any] = {
+    "id": 1,
+    "headline_word1": "HAPPY",
+    "headline_word2": "BIRTHDAY",
+    "giant_word": "YASH",
+    "top_badge": "NEXT LEVEL UI / UX",
+    "typing_text": "Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH.",
+    "spec_pill1": "CINEMATIC EDITION",
+    "spec_pill2": "LEVEL 2026"
+}
+
+DEFAULT_CHAPTERS: List[Dict[str, Any]] = [
+    {
+        "id": 1,
+        "step_index": 0,
+        "theme": "theme-crimson",
+        "badge": "// CHAPTER 01",
+        "counter": "01 / 04",
+        "title": "THE VISIONARY",
+        "body": "Every masterpiece begins with bold vision. Your creativity, relentless drive, and dedication to excellence transform ideas into reality. Keep dreaming big, YASH.",
+        "media_type": "none",
+        "media_url": "",
+        "media_name": ""
+    },
+    {
+        "id": 2,
+        "step_index": 1,
+        "theme": "theme-gold",
+        "badge": "// CHAPTER 02",
+        "counter": "02 / 04",
+        "title": "UNSTOPPABLE DRIVE",
+        "body": "Every challenge conquered has become another testament to your resilience. You continuously raise the standard and inspire everyone around you to aim higher.",
+        "media_type": "none",
+        "media_url": "",
+        "media_name": ""
+    },
+    {
+        "id": 3,
+        "step_index": 2,
+        "theme": "theme-cyan",
+        "badge": "// CHAPTER 03",
+        "counter": "03 / 04",
+        "title": "NEXT-LEVEL CRAFT",
+        "body": "True mastery isn't just about reaching milestones—it's the relentless passion, precision, and infectious positive energy you bring to every endeavor.",
+        "media_type": "none",
+        "media_url": "",
+        "media_name": ""
+    },
+    {
+        "id": 4,
+        "step_index": 3,
+        "theme": "theme-aurora",
+        "badge": "// FINALE CELEBRATION",
+        "counter": "04 / 04",
+        "title": "THE FUTURE IS YOURS",
+        "body": "Here is to another extraordinary year of breaking boundaries, unlocking new heights, and celebrating greatness. Happy Birthday, YASH! Keep shining!",
+        "media_type": "none",
+        "media_url": "",
+        "media_name": ""
+    }
+]
+
+
 # --- Site Config Operations ---
 def get_site_config() -> Dict[str, Any]:
-    with get_db_cursor() as cursor:
-        cursor.execute("SELECT * FROM site_config WHERE id = 1;")
-        row = cursor.fetchone()
-        if row:
-            return dict(row)
+    if not is_db_configured():
+        return dict(DEFAULT_SITE_CONFIG)
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT * FROM site_config WHERE id = 1;")
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+    except Exception as err:
+        logger.warning("Could not read site_config from PostgreSQL: %s", err)
 
-    return {
-        "id": 1,
-        "headline_word1": "HAPPY",
-        "headline_word2": "BIRTHDAY",
-        "giant_word": "YASH",
-        "top_badge": "NEXT LEVEL UI / UX",
-        "typing_text": "Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH.",
-        "spec_pill1": "CINEMATIC EDITION",
-        "spec_pill2": "LEVEL 2026"
-    }
+    return dict(DEFAULT_SITE_CONFIG)
 
 
 def update_site_config(updates: Dict[str, Any]) -> Dict[str, Any]:
@@ -261,17 +320,36 @@ def update_site_config(updates: Dict[str, Any]) -> Dict[str, Any]:
 
 # --- Chapter Operations ---
 def get_chapters() -> List[Dict[str, Any]]:
-    with get_db_cursor() as cursor:
-        cursor.execute("SELECT * FROM chapters ORDER BY step_index ASC;")
-        rows = cursor.fetchall()
-        return [dict(r) for r in rows]
+    if not is_db_configured():
+        return [dict(c) for c in DEFAULT_CHAPTERS]
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT * FROM chapters ORDER BY step_index ASC;")
+            rows = cursor.fetchall()
+            if rows:
+                return [dict(r) for r in rows]
+    except Exception as err:
+        logger.warning("Could not read chapters from PostgreSQL: %s", err)
+    return [dict(c) for c in DEFAULT_CHAPTERS]
 
 
 def get_chapter(step_index: int) -> Optional[Dict[str, Any]]:
-    with get_db_cursor() as cursor:
-        cursor.execute("SELECT * FROM chapters WHERE step_index = %s;", (step_index,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
+    if not is_db_configured():
+        for chap in DEFAULT_CHAPTERS:
+            if chap["step_index"] == step_index:
+                return dict(chap)
+        return None
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT * FROM chapters WHERE step_index = %s;", (step_index,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+    except Exception as err:
+        logger.warning("Could not read chapter %s from PostgreSQL: %s", step_index, err)
+        for chap in DEFAULT_CHAPTERS:
+            if chap["step_index"] == step_index:
+                return dict(chap)
+        return None
 
 
 def update_chapter(step_index: int, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -359,34 +437,46 @@ def add_reply(sender: str, message: str, chapter_index: Optional[int] = None, ch
 
 
 def get_replies() -> List[Dict[str, Any]]:
-    with get_db_cursor() as cursor:
-        cursor.execute("""
-            SELECT 
-                r.id, 
-                r.sender, 
-                r.message, 
-                r.chapter_index,
-                r.chapter_title,
-                r.created_at,
-                c.title AS card_title,
-                c.badge AS card_badge,
-                c.media_type,
-                c.media_url,
-                c.media_name
-            FROM replies r
-            LEFT JOIN chapters c ON r.chapter_index = c.step_index
-            ORDER BY r.id DESC;
-        """)
-        rows = cursor.fetchall()
-        return [dict(r) for r in rows]
+    if not is_db_configured():
+        return []
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    r.id, 
+                    r.sender, 
+                    r.message, 
+                    r.chapter_index, 
+                    r.chapter_title, 
+                    r.created_at,
+                    c.title AS card_title,
+                    c.badge AS card_badge,
+                    c.media_type,
+                    c.media_url,
+                    c.media_name
+                FROM replies r
+                LEFT JOIN chapters c ON r.chapter_index = c.step_index
+                ORDER BY r.id DESC;
+            """)
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows]
+    except Exception as err:
+        logger.warning("Could not read replies from PostgreSQL: %s", err)
+        return []
 
 
 # --- Texts Operations (Legacy Support) ---
 def get_all_texts() -> List[Dict[str, Any]]:
-    with get_db_cursor() as cursor:
-        cursor.execute("SELECT * FROM texts ORDER BY id DESC;")
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+    if not is_db_configured():
+        return []
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT * FROM texts ORDER BY id DESC;")
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+    except Exception as err:
+        logger.warning("Could not read texts from PostgreSQL: %s", err)
+        return []
 
 
 def add_text(content: str, tag: str = "Inspire", style_preset: str = "minimal",

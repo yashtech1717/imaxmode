@@ -68,6 +68,17 @@ os.makedirs(TEMPLATES_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_exception_handler(request: Request, exc: RuntimeError):
+    err_msg = str(exc)
+    if "DATABASE_URL" in err_msg or "Supabase" in err_msg:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "message": err_msg}
+        )
+    return JSONResponse(status_code=500, content={"status": "error", "message": err_msg})
+
 # --- Pydantic Schemas ---
 class LoginRequest(BaseModel):
     username: str
