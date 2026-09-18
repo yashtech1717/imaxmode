@@ -14,7 +14,7 @@ except ImportError:
 import logging
 import uuid
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -151,6 +151,10 @@ def diagnostic_dashboard(request: Request):
 @app.get("/api/diagnostic")
 def diagnostic_api():
     return run_supabase_diagnostic()
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
 
 # --- Root HTML Page ---
 @app.get("/")
