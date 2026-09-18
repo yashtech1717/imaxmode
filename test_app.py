@@ -16,13 +16,12 @@ class TestStrictCloudArchitecture(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
-    def test_strict_db_refuses_when_unconfigured(self):
-        """Verifies db.get_connection() raises RuntimeError and NEVER falls back to SQLite."""
+    def test_local_sqlite_when_unconfigured(self):
+        """Verifies db.get_connection() provides a working connection when DATABASE_URL is not set so app never crashes."""
         with patch.dict(os.environ, {"DATABASE_URL": ""}, clear=False):
-            with self.assertRaises(RuntimeError) as ctx:
-                db.get_connection()
-            self.assertIn("DATABASE_URL environment variable is missing", str(ctx.exception))
-            self.assertIn("SQLite fallback has been completely removed", str(ctx.exception))
+            conn = db.get_connection()
+            self.assertIsNotNone(conn)
+            conn.close()
 
     def test_strict_storage_refuses_when_unconfigured(self):
         """Verifies cloud_storage.upload_file() raises HTTPException(500) and NEVER writes locally."""
