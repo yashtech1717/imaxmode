@@ -212,28 +212,41 @@
             <div class="portal-card-sheen"></div>
             
             <div class="portal-header">
-                <div class="cyber-accent-bar" style="margin-bottom: 12px;">
+                <div class="biometric-crest">
+                    <div class="crest-ring-outer"></div>
+                    <div class="crest-ring-inner"></div>
+                    <svg class="crest-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M12 2a10 10 0 0 0-7.07 17.07l.07.07A10 10 0 0 0 12 22a10 10 0 0 0 7-2.86l.07-.07A10 10 0 0 0 12 2z"/>
+                        <path d="M12 6v6l4 2"/>
+                        <circle cx="12" cy="12" r="2.5"/>
+                    </svg>
+                </div>
+                <div class="cyber-accent-bar" style="margin-bottom: 10px;">
                     <span class="theme-line red-line"></span>
                     <span class="cyber-badge">// SYSTEM ACCESS // 2026 EDITION</span>
                     <span class="theme-line red-line"></span>
                 </div>
                 <h2 class="portal-title">AURA PORTAL</h2>
-                <p class="portal-subtitle">Enter credentials to unlock the cinematic birthday experience</p>
+                <p class="portal-subtitle">Enter your verified credentials to access the cinematic experience</p>
             </div>
 
             <form id="loginForm" class="portal-form">
                 <div class="form-group">
-                    <label for="loginUsername">ID / USERNAME</label>
+                    <label for="loginUsername">CALLSIGN / USERNAME</label>
                     <div class="input-glow-wrap">
-                        <input type="text" id="loginUsername" placeholder="e.g. yash or Glory" required autocomplete="username">
+                        <input type="text" id="loginUsername" placeholder="ENTER USERNAME" required autocomplete="username">
                         <span class="input-focus-line"></span>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="loginPassword">ACCESS KEY / PASSWORD</label>
-                    <div class="input-glow-wrap">
+                    <div class="input-glow-wrap password-wrap">
                         <input type="password" id="loginPassword" placeholder="••••••••••••" required autocomplete="current-password">
+                        <button type="button" class="pwd-toggle-btn" id="pwdToggleBtn" title="Toggle password visibility" tabindex="-1">
+                            <svg id="eyeOpenIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg id="eyeSlashIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+                        </button>
                         <span class="input-focus-line"></span>
                     </div>
                 </div>
@@ -242,20 +255,14 @@
 
                 <button type="submit" class="btn-portal-submit" id="loginSubmitBtn">
                     <span class="btn-glow-layer"></span>
-                    <span>ACCESS PORTAL</span>
+                    <span>AUTHENTICATE & ENTER</span>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>
             </form>
 
-            <div class="portal-hints">
-                <div class="hint-row">
-                    <span class="hint-badge admin">ADMIN</span>
-                    <span class="hint-text">User: <strong>yash</strong> | Pass: <strong>yashadmin17</strong></span>
-                </div>
-                <div class="hint-row">
-                    <span class="hint-badge viewer">VIEWER</span>
-                    <span class="hint-text">User: <strong>Glory</strong> | Pass: <strong>lory</strong></span>
-                </div>
+            <div class="portal-security-badge">
+                <span class="security-dot"></span>
+                <span>SECURE PROTOCOL // 256-BIT ENCRYPTION</span>
             </div>
         </div>
     </div>
@@ -349,11 +356,29 @@
                         <div class="form-group">
                             <label>THEME ACCENT</label>
                             <select id="adminCardTheme">
-                                <option value="theme-crimson">Crimson Red</option>
-                                <option value="theme-gold">Radiant Gold</option>
-                                <option value="theme-cyan">Electric Cyan</option>
-                                <option value="theme-aurora">Supernova Aurora</option>
+                                <option value="theme-crimson">Crimson Red (#ff2a4b)</option>
+                                <option value="theme-gold">Radiant Gold (#ffd700)</option>
+                                <option value="theme-cyan">Electric Cyan (#00f2fe)</option>
+                                <option value="theme-aurora">Supernova Aurora (#a855f7)</option>
+                                <option value="theme-emerald">Matrix Emerald (#10b981)</option>
+                                <option value="theme-amber">Solar Flare Amber (#f97316)</option>
+                                <option value="theme-rose">Cosmic Rose (#f43f5e)</option>
+                                <option value="theme-ice">Glacial Frost (#38bdf8)</option>
+                                <option value="theme-violet">Ultra Violet (#8b5cf6)</option>
+                                <option value="theme-silver">Obsidian Platinum (#e2e8f0)</option>
                             </select>
+                            <div class="theme-swatches-grid" id="themeSwatchesGrid" title="Click a color swatch to select theme">
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-crimson" style="--swatch-color:#ff2a4b;" title="Crimson Red"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-gold" style="--swatch-color:#ffd700;" title="Radiant Gold"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-cyan" style="--swatch-color:#00f2fe;" title="Electric Cyan"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-aurora" style="--swatch-color:#a855f7;" title="Supernova Aurora"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-emerald" style="--swatch-color:#10b981;" title="Matrix Emerald"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-amber" style="--swatch-color:#f97316;" title="Solar Flare Amber"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-rose" style="--swatch-color:#f43f5e;" title="Cosmic Rose"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-ice" style="--swatch-color:#38bdf8;" title="Glacial Frost"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-violet" style="--swatch-color:#8b5cf6;" title="Ultra Violet"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-silver" style="--swatch-color:#e2e8f0;" title="Obsidian Platinum"></button>
+                            </div>
                         </div>
 
                         <!-- Media Attachment Box with Live Visual Preview -->
@@ -504,19 +529,36 @@
     <!-- ========================================================================== -->
     <div class="modal-backdrop replies-modal-backdrop" id="adminRepliesModal" style="display: none;">
         <div class="modal-box replies-viewer-box">
+            <div class="portal-card-sheen"></div>
             <div class="modal-header replies-viewer-header">
                 <div class="media-title-group">
-                    <span class="cyber-badge">// INBOX & MEMORY CONTEXT</span>
-                    <h3 class="media-title-text">📬 GLORY'S REPLIES & WISHES</h3>
+                    <div class="cyber-accent-bar" style="margin-bottom: 6px;">
+                        <span class="theme-line red-line"></span>
+                        <span class="cyber-badge">// TRANSMISSION LOG // SECURE INBOX</span>
+                        <span class="theme-line red-line"></span>
+                    </div>
+                    <div class="replies-title-row">
+                        <h3 class="media-title-text">📬 GLORY'S REPLIES & WISHES</h3>
+                        <span class="replies-count-pill" id="repliesCountPill">0 TRANSMISSIONS</span>
+                    </div>
                 </div>
                 <div class="replies-header-actions">
-                    <button type="button" class="btn-refresh-replies" id="modalRefreshRepliesBtn">↺ REFRESH</button>
-                    <button class="btn-modal-close" id="adminRepliesModalCloseBtn">✕ CLOSE</button>
+                    <button type="button" class="btn-refresh-replies" id="modalRefreshRepliesBtn" title="Fetch latest incoming transmissions">
+                        <span class="btn-spin-icon">↺</span>
+                        <span>REFRESH</span>
+                    </button>
+                    <button class="btn-modal-close" id="adminRepliesModalCloseBtn">✕</button>
                 </div>
             </div>
 
             <div class="rich-replies-container" id="richRepliesContainer">
-                <div class="empty-replies">Loading replies with uploaded memory context...</div>
+                <div class="empty-replies">
+                    <div class="radar-scan-box">
+                        <div class="radar-sweep"></div>
+                        <span class="radar-icon">📡</span>
+                    </div>
+                    <p class="radar-text">INITIALIZING INBOX SCAN...</p>
+                </div>
             </div>
         </div>
     </div>

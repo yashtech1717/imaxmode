@@ -83,6 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginUsername = document.getElementById('loginUsername');
     const loginPassword = document.getElementById('loginPassword');
     const loginErrorMsg = document.getElementById('loginErrorMsg');
+    const pwdToggleBtn = document.getElementById('pwdToggleBtn');
+    const eyeOpenIcon = document.getElementById('eyeOpenIcon');
+    const eyeSlashIcon = document.getElementById('eyeSlashIcon');
 
     // Admin Studio Drawer Elements
     const adminDrawerBackdrop = document.getElementById('adminDrawerBackdrop');
@@ -110,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminCardTitle = document.getElementById('adminCardTitle');
     const adminCardBody = document.getElementById('adminCardBody');
     const adminCardTheme = document.getElementById('adminCardTheme');
+    const themeSwatchesGrid = document.getElementById('themeSwatchesGrid');
     const currentMediaText = document.getElementById('currentMediaText');
     const adminFileInput = document.getElementById('adminFileInput');
     const adminRemoveMediaBtn = document.getElementById('adminRemoveMediaBtn');
@@ -132,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminRepliesModalCloseBtn = document.getElementById('adminRepliesModalCloseBtn');
     const modalRefreshRepliesBtn = document.getElementById('modalRefreshRepliesBtn');
     const richRepliesContainer = document.getElementById('richRepliesContainer');
+    const repliesCountPill = document.getElementById('repliesCountPill');
 
     // Glory Reply Modal Elements
     const replyModal = document.getElementById('replyModal');
@@ -402,6 +407,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.addEventListener('resize', resizeCanvas);
 
+    const THEME_EMBER_PALETTES = {
+        'theme-crimson': ['rgba(255, 42, 75,', 'rgba(255, 120, 140,', 'rgba(255, 215, 0,'],
+        'theme-gold': ['rgba(255, 215, 0,', 'rgba(255, 180, 50,', 'rgba(255, 245, 160,'],
+        'theme-cyan': ['rgba(0, 242, 254,', 'rgba(56, 189, 248,', 'rgba(147, 197, 253,'],
+        'theme-aurora': ['rgba(168, 85, 247,', 'rgba(236, 72, 153,', 'rgba(192, 132, 252,'],
+        'theme-emerald': ['rgba(16, 185, 129,', 'rgba(52, 211, 153,', 'rgba(110, 231, 183,'],
+        'theme-amber': ['rgba(249, 115, 22,', 'rgba(251, 146, 60,', 'rgba(255, 215, 0,'],
+        'theme-rose': ['rgba(244, 63, 94,', 'rgba(251, 113, 133,', 'rgba(253, 164, 175,'],
+        'theme-ice': ['rgba(56, 189, 248,', 'rgba(186, 230, 253,', 'rgba(224, 242, 254,'],
+        'theme-violet': ['rgba(139, 92, 246,', 'rgba(196, 181, 253,', 'rgba(167, 139, 250,'],
+        'theme-silver': ['rgba(226, 232, 240,', 'rgba(255, 255, 255,', 'rgba(203, 213, 225,']
+    };
+    let currentThemeEmberPalette = THEME_EMBER_PALETTES['theme-crimson'];
+
     class EmberParticle {
         constructor() {
             this.reset();
@@ -416,7 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.alpha = Math.random() * 0.45 + 0.15;
             this.decay = Math.random() * 0.0015 + 0.0005;
             this.flickerSpeed = Math.random() * 0.03 + 0.01;
-            this.color = Math.random() > 0.4 ? 'rgba(255, 42, 75,' : 'rgba(255, 215, 0,';
+            const palette = currentThemeEmberPalette || THEME_EMBER_PALETTES['theme-crimson'];
+            this.color = palette[Math.floor(Math.random() * palette.length)];
         }
 
         update() {
@@ -720,6 +740,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Password Visibility Toggle
+    if (pwdToggleBtn && loginPassword) {
+        pwdToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isPwd = loginPassword.type === 'password';
+            loginPassword.type = isPwd ? 'text' : 'password';
+            if (eyeOpenIcon) eyeOpenIcon.style.display = isPwd ? 'none' : 'block';
+            if (eyeSlashIcon) eyeSlashIcon.style.display = isPwd ? 'block' : 'none';
+        });
+    }
+
     // Logout
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
@@ -733,7 +764,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
             if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
             if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
-            if (loginPassword) loginPassword.value = '';
+            if (loginPassword) {
+                loginPassword.value = '';
+                loginPassword.type = 'password';
+            }
+            if (eyeOpenIcon) eyeOpenIcon.style.display = 'block';
+            if (eyeSlashIcon) eyeSlashIcon.style.display = 'none';
             showToast('Session ended.');
         });
     }
@@ -802,10 +838,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function applyTheme(stepIndex) {
-        const meta = MILESTONES[stepIndex];
-        if (!meta) return;
-        document.body.className = meta.theme || 'theme-crimson';
+    function applyTheme(stepIndexOrTheme) {
+        let themeName = 'theme-crimson';
+        if (typeof stepIndexOrTheme === 'number') {
+            const meta = MILESTONES[stepIndexOrTheme];
+            if (meta && meta.theme) themeName = meta.theme;
+        } else if (typeof stepIndexOrTheme === 'string' && stepIndexOrTheme) {
+            themeName = stepIndexOrTheme;
+        }
+        document.body.className = themeName;
+        currentThemeEmberPalette = THEME_EMBER_PALETTES[themeName] || THEME_EMBER_PALETTES['theme-crimson'];
+        if (typeof embers !== 'undefined' && Array.isArray(embers)) {
+            embers.forEach(e => {
+                const palette = currentThemeEmberPalette;
+                e.color = palette[Math.floor(Math.random() * palette.length)];
+            });
+        }
     }
 
     function initDotsPosition(stepIndex) {
@@ -1202,7 +1250,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (adminCardCounter) adminCardCounter.value = chap.counter || '';
         if (adminCardTitle) adminCardTitle.value = chap.title || '';
         if (adminCardBody) adminCardBody.value = chap.body || '';
-        if (adminCardTheme) adminCardTheme.value = chap.theme || 'theme-crimson';
+        if (adminCardTheme) {
+            const currentTheme = chap.theme || 'theme-crimson';
+            adminCardTheme.value = currentTheme;
+            if (themeSwatchesGrid) {
+                themeSwatchesGrid.querySelectorAll('.theme-swatch-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+                });
+            }
+        }
 
         // Load media attachment state
         tempMediaUrl = chap.media_url || '';
@@ -1409,6 +1465,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Theme Swatches Grid & Select Synchronization
+    if (themeSwatchesGrid && adminCardTheme) {
+        themeSwatchesGrid.addEventListener('click', (e) => {
+            const btn = e.target.closest('.theme-swatch-btn');
+            if (!btn) return;
+            const chosenTheme = btn.dataset.theme;
+            adminCardTheme.value = chosenTheme;
+            themeSwatchesGrid.querySelectorAll('.theme-swatch-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyTheme(chosenTheme);
+        });
+
+        adminCardTheme.addEventListener('change', () => {
+            const chosenTheme = adminCardTheme.value;
+            themeSwatchesGrid.querySelectorAll('.theme-swatch-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.theme === chosenTheme);
+            });
+            applyTheme(chosenTheme);
+        });
+    }
+
     // Save Site Texts
     if (adminTextsForm) {
         adminTextsForm.addEventListener('submit', async (e) => {
@@ -1479,6 +1556,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Helper: HTML Escaping
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Helper: Friendly timestamp
+    function formatTransmissionTime(dateStr) {
+        if (!dateStr) return 'Recent Transmission';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            const now = new Date();
+            const diffSec = Math.floor((now - d) / 1000);
+            if (diffSec < 60) return 'Just now';
+            if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+            if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
     // ==========================================================================
     // 9. Dedicated Replies Modal & Rich Inbox Engine (Yash)
     // ==========================================================================
@@ -1492,6 +1599,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update badge counters
             if (headerRepliesCount) headerRepliesCount.textContent = replies.length;
             if (repliesBadgeCount) repliesBadgeCount.textContent = replies.length;
+            if (repliesCountPill) {
+                repliesCountPill.textContent = `${replies.length} TRANSMISSION${replies.length === 1 ? '' : 'S'}`;
+            }
 
             // Render Studio Drawer simple list if present
             if (adminRepliesList) {
@@ -1502,14 +1612,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     replies.forEach(r => {
                         const item = document.createElement('div');
                         item.className = 'reply-item-card';
-                        const contextBadge = r.chapter_title ? `<span class="reply-context-badge">📍 Card 0${(r.chapter_index != null ? r.chapter_index + 1 : '')}: ${r.chapter_title}</span>` : '';
+                        const contextBadge = r.chapter_title ? `<span class="reply-context-badge">📍 Card 0${(r.chapter_index != null ? r.chapter_index + 1 : '')}: ${escapeHtml(r.chapter_title)}</span>` : '';
                         item.innerHTML = `
                             <div class="reply-item-meta">
-                                <span class="reply-sender-name">💌 ${r.sender}</span>
-                                <span class="reply-time">${r.created_at || 'Recent'}</span>
+                                <span class="reply-sender-name">💌 ${escapeHtml(r.sender)}</span>
+                                <span class="reply-time">${formatTransmissionTime(r.created_at)}</span>
                             </div>
                             ${contextBadge}
-                            <p class="reply-item-content">${r.message}</p>
+                            <p class="reply-item-content">${escapeHtml(r.message)}</p>
                         `;
                         adminRepliesList.appendChild(item);
                     });
@@ -1520,80 +1630,122 @@ document.addEventListener('DOMContentLoaded', () => {
             if (richRepliesContainer) {
                 if (replies.length === 0) {
                     richRepliesContainer.innerHTML = `
-                        <div class="empty-replies" style="padding: 40px 20px; text-align: center; color: rgba(255,255,255,0.4);">
-                            <div style="font-size: 32px; margin-bottom: 12px;">📭</div>
-                            <p>No messages received yet from Glory.</p>
+                        <div class="empty-replies" style="padding: 48px 20px; text-align: center;">
+                            <div class="radar-scan-box">
+                                <div class="radar-sweep"></div>
+                                <span class="radar-icon">📡</span>
+                            </div>
+                            <h4 style="font-family: var(--font-display); letter-spacing: 0.12em; color: #ffffff; margin-bottom: 6px;">NO TRANSMISSIONS YET</h4>
+                            <p class="radar-text">INBOX READY // AWAITING SECURE MESSAGES FROM GLORY</p>
                         </div>
                     `;
                     return;
                 }
 
                 richRepliesContainer.innerHTML = '';
-                replies.forEach(r => {
+                replies.forEach((r, idx) => {
                     const card = document.createElement('div');
                     card.className = 'rich-reply-card';
 
-                    // Attached card uploaded media preview
+                    const senderName = r.sender || 'Glory';
+                    const senderInitial = senderName.charAt(0).toUpperCase();
+                    const cardTitle = r.card_title || r.chapter_title || '';
+                    const timeStr = formatTransmissionTime(r.created_at);
+
+                    // Context Banner
+                    let contextHtml = '';
+                    if (r.chapter_index != null || cardTitle) {
+                        const cardNum = r.chapter_index != null ? `0${r.chapter_index + 1}` : 'CARD';
+                        contextHtml = `
+                            <div class="reply-context-banner">
+                                <span>📍 CHAPTER ${cardNum}: ${escapeHtml(cardTitle)}</span>
+                            </div>
+                        `;
+                    }
+
+                    // Media Attachment
                     let mediaHtml = '';
                     const mediaType = (r.media_type || '').toLowerCase();
                     const mediaUrl = r.media_url || '';
-                    const cardTitle = r.card_title || r.chapter_title || '';
+                    const mediaName = r.media_name || 'Memory Attachment';
 
-                    if (r.chapter_index != null || cardTitle) {
-                        let mediaContentHtml = '';
-                        if (mediaType === 'image' && mediaUrl) {
-                            mediaContentHtml = `
-                                <div class="rich-reply-media-box">
-                                    <div class="media-box-label">Attached Card Memory (Photo):</div>
-                                    <img src="${mediaUrl}" class="rich-reply-thumb" alt="Memory Photo" onclick="window.open('${mediaUrl}', '_blank')" title="Click to view full photo">
-                                </div>
-                            `;
-                        } else if (mediaType === 'video' && mediaUrl) {
-                            mediaContentHtml = `
-                                <div class="rich-reply-media-box">
-                                    <div class="media-box-label">Attached Card Memory (Video):</div>
-                                    <video src="${mediaUrl}" controls class="rich-reply-video" preload="metadata"></video>
-                                </div>
-                            `;
-                        } else if (mediaType === 'audio' && mediaUrl) {
-                            mediaContentHtml = `
-                                <div class="rich-reply-media-box">
-                                    <div class="media-box-label">Attached Card Memory (Audio): ${r.media_name || ''}</div>
-                                    <audio src="${mediaUrl}" controls class="rich-reply-audio" preload="metadata"></audio>
-                                </div>
-                            `;
-                        } else {
-                            mediaContentHtml = `
-                                <div class="rich-reply-media-box text-only-box">
-                                    <span class="media-box-label">Card Story: "${cardTitle}"</span>
-                                </div>
-                            `;
-                        }
-
+                    if (mediaType === 'image' && mediaUrl) {
                         mediaHtml = `
-                            <div class="rich-reply-context-banner">
-                                <span class="context-pill">📍 REPLIED TO CARD 0${r.chapter_index != null ? r.chapter_index + 1 : ''}</span>
-                                <span class="context-title">${cardTitle}</span>
+                            <div class="rich-reply-media-attachment">
+                                <div class="media-attachment-label">
+                                    <span>📷</span>
+                                    <span>ATTACHED MEMORY (PHOTO): ${escapeHtml(mediaName)}</span>
+                                </div>
+                                <img src="${mediaUrl}" class="rich-reply-thumb" alt="Memory Photo" onclick="window.open('${mediaUrl}', '_blank')" title="Click to view full image in high resolution">
                             </div>
-                            ${mediaContentHtml}
+                        `;
+                    } else if (mediaType === 'video' && mediaUrl) {
+                        mediaHtml = `
+                            <div class="rich-reply-media-attachment">
+                                <div class="media-attachment-label">
+                                    <span>🎬</span>
+                                    <span>ATTACHED MEMORY (VIDEO): ${escapeHtml(mediaName)}</span>
+                                </div>
+                                <video src="${mediaUrl}" controls playsinline class="rich-reply-video" preload="metadata"></video>
+                            </div>
+                        `;
+                    } else if (mediaType === 'audio' && mediaUrl) {
+                        mediaHtml = `
+                            <div class="rich-reply-media-attachment">
+                                <div class="media-attachment-label">
+                                    <span>♫</span>
+                                    <span>ATTACHED MEMORY (AUDIO): ${escapeHtml(mediaName)}</span>
+                                </div>
+                                <audio src="${mediaUrl}" controls class="rich-reply-audio" preload="metadata"></audio>
+                            </div>
                         `;
                     }
 
                     card.innerHTML = `
-                        <div class="rich-reply-header">
-                            <div class="rich-reply-author">
-                                <span class="reply-avatar">💌</span>
-                                <div>
-                                    <div class="author-name">${r.sender}</div>
-                                    <div class="reply-timestamp">${r.created_at || 'Just now'}</div>
+                        <div class="reply-card-header">
+                            <div class="reply-author-cluster">
+                                <div class="reply-avatar-monogram">${senderInitial}</div>
+                                <div class="reply-author-meta">
+                                    <div class="author-title-row">
+                                        <span class="reply-author-name">${escapeHtml(senderName)}</span>
+                                        <span class="reply-verified-badge">VERIFIED</span>
+                                    </div>
+                                    <span class="reply-timestamp">⏱ ${escapeHtml(timeStr)}</span>
                                 </div>
                             </div>
+                            <div class="reply-header-actions">
+                                <button type="button" class="btn-copy-reply" title="Copy transmission text" data-reply-id="${r.id || idx}">
+                                    <span>📋 COPY</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="rich-reply-body">
-                            "${r.message}"
+
+                        ${contextHtml}
+
+                        <div class="reply-message-body">
+                            "${escapeHtml(r.message)}"
                         </div>
+
                         ${mediaHtml}
                     `;
+
+                    // Wire copy button
+                    const copyBtn = card.querySelector('.btn-copy-reply');
+                    if (copyBtn) {
+                        copyBtn.addEventListener('click', async () => {
+                            try {
+                                await navigator.clipboard.writeText(r.message);
+                                copyBtn.innerHTML = '<span>✓ COPIED</span>';
+                                showToast('Transmission copied to clipboard! ✦');
+                                setTimeout(() => {
+                                    copyBtn.innerHTML = '<span>📋 COPY</span>';
+                                }, 2000);
+                            } catch (e) {
+                                showToast('Message: ' + r.message.substring(0, 40) + '...');
+                            }
+                        });
+                    }
+
                     richRepliesContainer.appendChild(card);
                 });
             }
