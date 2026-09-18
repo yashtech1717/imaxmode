@@ -1,34 +1,55 @@
 import os
+from pathlib import Path
 import uuid
 import logging
 import requests
 from fastapi import HTTPException
 
+# Explicitly load .env from project root before reading env vars
+env_path = Path(__file__).resolve().parent / ".env"
+try:
+    from dotenv import load_dotenv
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path, override=True)
+except ImportError:
+    pass
+
 logger = logging.getLogger("aura.storage")
 
-# Supabase Storage Configuration (Strict Cloud Only - No Local Fallback)
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-if "/rest/v1" in SUPABASE_URL:
-    SUPABASE_URL = SUPABASE_URL.split("/rest/v1")[0].rstrip("/")
-
-SUPABASE_KEY = (
-    os.environ.get("SUPABASE_KEY", "").strip() 
-    or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-)
-SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "memories").strip()
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB Supabase single-file limit
-
 _bucket_verified = False
+
+
+def get_supabase_url() -> str:
+    url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+    if "/rest/v1" in url:
+        url = url.split("/rest/v1")[0].rstrip("/")
+    return url
+
+
+def get_supabase_key() -> str:
+    return (
+        os.environ.get("SUPABASE_KEY", "").strip()
+        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    )
+
+
+def get_supabase_bucket() -> str:
+    return os.environ.get("SUPABASE_BUCKET", "memories").strip()
 
 
 def is_storage_configured() -> bool:
     """Returns True if Supabase Storage credentials are provided."""
-    return bool(SUPABASE_URL and SUPABASE_KEY)
+    return bool(get_supabase_url() and get_supabase_key())
 
 
 def check_storage_health() -> dict:
     """Checks if Supabase Storage can be reached and bucket is accessible."""
-    if not is_storage_configured():
+    url = get_supabase_url()
+    key = get_supabase_key()
+    bucket = get_supabase_bucket()
+
+    if not (url and key):
         return {
             "status": "error",
             "configured": False,
@@ -36,22 +57,30 @@ def check_storage_health() -> dict:
         }
 
     try:
-        url = f"{SUPABASE_URL}/storage/v1/bucket/{SUPABASE_BUCKET}"
+        bucket_url = f"{url}/storage/v1/bucket/{bucket}"
         headers = {
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "apikey": SUPABASE_KEY
+            "Authorization": f"Bearer {key}",
+            "apikey": key
         }
-        res = requests.get(url, headers=headers, timeout=6)
+        res = requests.get(bucket_url, headers=headers, timeout=8)
         if res.status_code in [200, 201]:
-            return {"status": "ok", "configured": True, "bucket": SUPABASE_BUCKET, "public": True}
+            return {"status": "ok", "configured": True, "bucket": bucket, "public": True}
         elif res.status_code == 404:
-            # Try to auto-create bucket
-            create_url = f"{SUPABASE_URL}/storage/v1/bucket"
-            create_payload = {"id": SUPABASE_BUCKET, "name": SUPABASE_BUCKET, "public": True}
-            create_res = requests.post(create_url, json=create_payload, headers=headers, timeout=6)
+            # Try to auto-create bucket programmatically if using service_role key
+            create_url = f"{url}/storage/v1/bucket"
+            create_payload = {"id": bucket, "name": bucket, "public": True}
+            create_res = requests.post(create_url, json=create_payload, headers=headers, timeout=8)
             if create_res.status_code in [200, 201, 400, 409]:
-                return {"status": "ok", "configured": True, "bucket": SUPABASE_BUCKET, "public": True}
-            return {"status": "error", "configured": True, "message": f"Bucket '{SUPABASE_BUCKET}' not found and auto-create returned {create_res.status_code}"}
+                return {"status": "ok", "configured": True, "bucket": bucket, "public": True}
+            return {
+                "status": "error",
+                "configured": True,
+                "message": f"Bucket '{bucket}' not found. Please create public bucket '{bucket}' in Supabase Storage Dashboard."
+            }
+        elif res.status_code == 401:
+            return {"status": "error", "configured": True, "message": "Storage API rejected key (HTTP 401 Unauthorized)"}
+        elif res.status_code == 403:
+            return {"status": "error", "configured": True, "message": "Storage API permission denied (HTTP 403 Forbidden)"}
         else:
             return {"status": "error", "configured": True, "message": f"Storage returned status {res.status_code}: {res.text}"}
     except Exception as err:
@@ -62,30 +91,29 @@ def _ensure_supabase_bucket():
     global _bucket_verified
     if _bucket_verified:
         return
-    if not is_storage_configured():
+    url = get_supabase_url()
+    key = get_supabase_key()
+    bucket = get_supabase_bucket()
+
+    if not (url and key):
         raise HTTPException(
             status_code=500,
-            detail="Supabase Storage is not configured. SUPABASE_URL and SUPABASE_KEY must be set in environment variables."
+            detail="CRITICAL: Supabase Storage is not configured. SUPABASE_URL and SUPABASE_KEY must be set in your .env file or Render environment variables."
         )
 
     try:
-        url = f"{SUPABASE_URL}/storage/v1/bucket"
+        create_url = f"{url}/storage/v1/bucket"
         headers = {
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {key}",
+            "apikey": key,
             "Content-Type": "application/json"
         }
-        payload = {
-            "id": SUPABASE_BUCKET,
-            "name": SUPABASE_BUCKET,
-            "public": True
-        }
-        res = requests.post(url, json=payload, headers=headers, timeout=6)
+        payload = {"id": bucket, "name": bucket, "public": True}
+        res = requests.post(create_url, json=payload, headers=headers, timeout=8)
         if res.status_code in [200, 201, 400, 409]:
             _bucket_verified = True
-            logger.info(f"Supabase Storage bucket '{SUPABASE_BUCKET}' ready.")
     except Exception as e:
-        logger.warning(f"Could not auto-create Supabase bucket: {e}")
+        logger.warning("Could not auto-create Supabase bucket: %s", e)
         _bucket_verified = True
 
 
@@ -95,11 +123,15 @@ def upload_file(file_bytes: bytes, filename: str, content_type: str = "") -> dic
     NEVER writes to local filesystem or SQLite.
     Raises HTTPException on failure or missing credentials.
     """
-    if not is_storage_configured():
+    url = get_supabase_url()
+    key = get_supabase_key()
+    bucket = get_supabase_bucket()
+
+    if not (url and key):
         logger.critical("Upload rejected: SUPABASE_URL or SUPABASE_KEY is missing. Local filesystem fallback is disabled.")
         raise HTTPException(
             status_code=500,
-            detail="CRITICAL: Supabase Cloud Storage is not configured on the server. SUPABASE_URL and SUPABASE_KEY must be set in Render environment variables. Local file storage is disabled to prevent data loss."
+            detail="CRITICAL: Supabase Cloud Storage is not configured on the server. SUPABASE_URL and SUPABASE_KEY must be set in your .env file or Render environment variables. Local file storage is disabled to prevent data loss."
         )
 
     if len(file_bytes) > MAX_FILE_SIZE_BYTES:
@@ -130,10 +162,10 @@ def upload_file(file_bytes: bytes, filename: str, content_type: str = "") -> dic
     clean_name = os.path.splitext(os.path.basename(filename))[0].replace(" ", "_")
     unique_file_path = f"{uuid.uuid4().hex[:10]}_{clean_name}{ext}"
 
-    upload_url = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{unique_file_path}"
+    upload_url = f"{url}/storage/v1/object/{bucket}/{unique_file_path}"
     headers = {
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {key}",
+        "apikey": key,
         "Content-Type": final_mime,
         "x-upsert": "true"
     }
@@ -141,21 +173,21 @@ def upload_file(file_bytes: bytes, filename: str, content_type: str = "") -> dic
     try:
         res = requests.post(upload_url, data=file_bytes, headers=headers, timeout=45)
     except Exception as err:
-        logger.error(f"Network error uploading to Supabase Storage: {err}", exc_info=True)
+        logger.error("Network error uploading to Supabase Storage: %s", err, exc_info=True)
         raise HTTPException(
             status_code=502,
             detail=f"Failed to communicate with Supabase Cloud Storage: {str(err)}"
         )
 
     if res.status_code not in [200, 201]:
-        logger.error(f"Supabase Storage rejected upload (status {res.status_code}): {res.text}")
+        logger.error("Supabase Storage rejected upload (status %s): %s", res.status_code, res.text)
         raise HTTPException(
             status_code=502,
             detail=f"Supabase Storage upload failed with status {res.status_code}: {res.text}"
         )
 
-    public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{unique_file_path}"
-    logger.info(f"File successfully stored in Supabase Cloud Storage: {public_url}")
+    public_url = f"{url}/storage/v1/object/public/{bucket}/{unique_file_path}"
+    logger.info("File successfully stored in Supabase Cloud Storage: %s", public_url)
 
     return {
         "url": public_url,

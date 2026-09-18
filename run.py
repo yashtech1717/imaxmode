@@ -3,15 +3,19 @@ AURA // Minimalist Dark Text Canvas Launcher (with Mobile Network Access)
 Run with: python run.py
 """
 import os
+from pathlib import Path
 import uvicorn
 import webbrowser
 import threading
 import time
 import socket
 
+# Explicitly load .env from project root
+env_file = Path(__file__).resolve().parent / ".env"
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    if env_file.exists():
+        load_dotenv(dotenv_path=env_file, override=True)
 except ImportError:
     pass
 

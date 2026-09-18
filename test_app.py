@@ -16,16 +16,16 @@ class TestStrictCloudArchitecture(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
-    def test_local_sqlite_when_unconfigured(self):
-        """Verifies db.get_connection() provides a working connection when DATABASE_URL is not set so app never crashes."""
+    def test_strict_db_refuses_when_unconfigured(self):
+        """Verifies db.get_connection() raises RuntimeError when DATABASE_URL is not set so app never uses SQLite."""
         with patch.dict(os.environ, {"DATABASE_URL": ""}, clear=False):
-            conn = db.get_connection()
-            self.assertIsNotNone(conn)
-            conn.close()
+            with self.assertRaises(RuntimeError) as ctx:
+                db.get_connection()
+            self.assertIn("DATABASE_URL environment variable is missing", str(ctx.exception))
 
     def test_strict_storage_refuses_when_unconfigured(self):
         """Verifies cloud_storage.upload_file() raises HTTPException(500) and NEVER writes locally."""
-        with patch("cloud_storage.SUPABASE_URL", ""), patch("cloud_storage.SUPABASE_KEY", ""):
+        with patch.dict(os.environ, {"SUPABASE_URL": "", "SUPABASE_KEY": ""}, clear=False):
             from fastapi import HTTPException
             with self.assertRaises(HTTPException) as ctx:
                 cloud_storage.upload_file(b"fake data", "test.png")
@@ -73,7 +73,7 @@ class TestStrictCloudArchitecture(unittest.TestCase):
     def test_admin_upload_cloud_success(self):
         """Verifies successful upload returns a public cloud CDN URL."""
         mock_upload_result = {
-            "url": "https://vkzzdneprmwhsnzmeozx.supabase.co/storage/v1/object/public/memories/test.jpg",
+            "url": "https://mock-project.supabase.co/storage/v1/object/public/memories/test.jpg",
             "media_type": "image",
             "filename": "test.jpg",
             "is_cloud": True,

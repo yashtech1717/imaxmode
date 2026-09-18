@@ -1,7 +1,14 @@
 import os
+from pathlib import Path
+
+# Explicitly load .env from project root before any internal imports
+_env_file = Path(__file__).resolve().parent / ".env"
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    if _env_file.exists():
+        load_dotenv(dotenv_path=_env_file, override=True)
+    else:
+        load_dotenv(override=True)
 except ImportError:
     pass
 import logging

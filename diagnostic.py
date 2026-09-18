@@ -18,12 +18,18 @@ SECURITY REQUIREMENTS:
 import os
 import sys
 import logging
+from pathlib import Path
 from urllib.parse import urlparse
 import requests
 
+# Explicitly load .env from project root
+_env_file = Path(__file__).resolve().parent / ".env"
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    if _env_file.exists():
+        load_dotenv(dotenv_path=_env_file, override=True)
+    else:
+        load_dotenv(override=True)
 except ImportError:
     pass
 
@@ -339,6 +345,18 @@ def format_diagnostic_text(res: dict) -> str:
     lines.append("=" * 65)
     lines.append("  SUPABASE CONFIGURATION & CREDENTIAL DIAGNOSTIC")
     lines.append("=" * 65)
+
+    _env_disk_path = Path(__file__).resolve().parent / ".env"
+    if not _env_disk_path.exists():
+        lines.append(f"[NOTICE] Local '.env' file not found at:")
+        lines.append(f"  {_env_disk_path}")
+        lines.append("  To configure local development credentials, copy .env.example to .env")
+        lines.append("  and fill in your Supabase credentials (from your Render Dashboard).")
+        lines.append("-" * 65)
+    else:
+        lines.append(f"[OK] Local '.env' file loaded from:")
+        lines.append(f"  {_env_disk_path}")
+        lines.append("-" * 65)
 
     # 1. URL
     url_st = res["supabase_url"]["status"]

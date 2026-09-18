@@ -1,13 +1,20 @@
 import os
-import sqlite3
+from pathlib import Path
 import logging
 from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 
-logger = logging.getLogger("aura.db")
+# Explicitly load .env from project root before reading env vars
+env_path = Path(__file__).resolve().parent / ".env"
+try:
+    from dotenv import load_dotenv
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path, override=True)
+except ImportError:
+    pass
 
-DB_FILE = os.path.join(os.path.dirname(__file__), "texts.db")
+logger = logging.getLogger("aura.db")
 
 
 def get_database_url() -> str:
@@ -23,266 +30,158 @@ def is_db_configured() -> bool:
     return bool(get_database_url())
 
 
-IS_RENDER = os.environ.get("RENDER") == "true" or os.environ.get("ENVIRONMENT", "").lower() == "production"
-
-
 def get_connection():
     """
-    Connects to Supabase PostgreSQL via DATABASE_URL.
-    In production on Render: STRICTLY CLOUD-ONLY with ZERO local SQLite fallback.
-    In local development: Falls back to local texts.db only if DATABASE_URL is not set.
+    Connects strictly to Supabase PostgreSQL via DATABASE_URL using psycopg2.
+    Does NOT construct or guess hostnames.
+    Does NOT hard-code any passwords.
+    Does NOT fall back to SQLite.
     """
     url = get_database_url()
+    if not url:
+        msg = (
+            "CRITICAL: DATABASE_URL environment variable is missing. "
+            "Supabase PostgreSQL is required. Local SQLite fallback has been completely removed. "
+            "Please configure DATABASE_URL in your local .env file or Render Environment Settings."
+        )
+        logger.critical(msg)
+        raise RuntimeError(msg)
 
-    # In production on Render, strictly require Supabase PostgreSQL
-    if IS_RENDER:
-        if not url:
-            msg = (
-                "FATAL: DATABASE_URL is not set on Render. "
-                "Supabase PostgreSQL is strictly required in production. "
-                "Local SQLite fallback is permanently disabled on Render to prevent ephemeral data loss."
-            )
-            logger.critical(msg)
-            raise RuntimeError(msg)
-
-        try:
-            import psycopg2
-            import psycopg2.extras
-            conn = psycopg2.connect(
-                url,
-                cursor_factory=psycopg2.extras.RealDictCursor,
-                connect_timeout=10
-            )
-            return conn
-        except Exception as err:
-            msg = (
-                f"FATAL: Failed to connect to Supabase PostgreSQL in production: {err}. "
-                "Refusing to fall back to ephemeral container storage."
-            )
-            logger.critical(msg)
-            raise RuntimeError(msg) from err
-
-    # If DATABASE_URL is provided in local environment, connect to PostgreSQL
-    if url:
-        try:
-            import psycopg2
-            import psycopg2.extras
-            conn = psycopg2.connect(
-                url,
-                cursor_factory=psycopg2.extras.RealDictCursor,
-                connect_timeout=8
-            )
-            return conn
-        except Exception as err:
-            logger.warning(
-                f"Could not connect to PostgreSQL ({err}). "
-                "Using local SQLite database for this local session."
-            )
-            conn = sqlite3.connect(DB_FILE)
-            conn.row_factory = sqlite3.Row
-            return conn
-
-    # Local development machine without DATABASE_URL
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def is_conn_postgres(conn) -> bool:
-    return not isinstance(conn, sqlite3.Connection)
-
-
-def q(sql: str, is_pg: bool) -> str:
-    """Adapts query placeholders and syntax between PostgreSQL (%s) and SQLite (?)."""
-    if is_pg:
-        return sql
-    # SQLite does not support RETURNING in older versions; strip if present
-    clean_sql = sql
-    if " RETURNING " in clean_sql.upper():
-        clean_sql = clean_sql[:clean_sql.upper().rfind(" RETURNING ")]
-    return clean_sql.replace("%s", "?")
-
-
-def execute_insert(cursor, conn, sql: str, params: tuple) -> int:
-    """Executes an INSERT and returns the newly generated ID for both PostgreSQL and SQLite."""
-    if is_conn_postgres(conn):
-        pg_sql = sql
-        if " RETURNING " not in pg_sql.upper():
-            pg_sql = pg_sql.rstrip(";") + " RETURNING id;"
-        cursor.execute(pg_sql, params)
-        row = cursor.fetchone()
-        return row["id"] if row else 0
-    else:
-        sqlite_sql = q(sql, is_pg=False)
-        cursor.execute(sqlite_sql, params)
-        return cursor.lastrowid
+    try:
+        import psycopg2
+        import psycopg2.extras
+        conn = psycopg2.connect(
+            url,
+            cursor_factory=psycopg2.extras.RealDictCursor,
+            connect_timeout=8
+        )
+        return conn
+    except Exception as err:
+        parsed = urlparse(url)
+        host = parsed.hostname or "unknown"
+        msg = (
+            f"FATAL: Failed to connect to Supabase PostgreSQL at {host}: {err}. "
+            "Please verify your DATABASE_URL, password, and ensure you use the "
+            "Supabase Connection Pooler URI (IPv4 supported on port 6543/5432)."
+        )
+        logger.critical(msg)
+        raise RuntimeError(msg) from err
 
 
 @contextmanager
 def get_db_cursor(commit: bool = False):
-    """Context manager for safely executing queries and guaranteeing connection closure."""
+    """Context manager for executing queries with guaranteed connection closure."""
     conn = get_connection()
-    is_pg = is_conn_postgres(conn)
     try:
-        cursor = conn.cursor()
-        yield cursor, is_pg, conn
+        with conn.cursor() as cur:
+            yield cur
         if commit:
             conn.commit()
     except Exception:
-        if hasattr(conn, "rollback"):
-            conn.rollback()
+        conn.rollback()
         raise
     finally:
         conn.close()
 
 
 def check_db_health() -> Dict[str, Any]:
-    """Tests the database connection and returns status dictionary."""
+    """Tests the PostgreSQL connection and returns status dictionary."""
     url = get_database_url()
     if not url:
         return {
-            "status": "local_sqlite",
+            "status": "error",
             "configured": False,
-            "engine": "sqlite",
-            "message": "DATABASE_URL not configured. Running on local SQLite texts.db."
+            "message": "DATABASE_URL environment variable is not configured."
         }
 
     try:
         import psycopg2
-        conn = psycopg2.connect(url, connect_timeout=5)
+        parsed = urlparse(url)
+        conn = psycopg2.connect(url, connect_timeout=6)
         with conn.cursor() as cur:
             cur.execute("SELECT 1 AS ping;")
         conn.close()
 
-        parsed = urlparse(url)
         return {
             "status": "ok",
             "configured": True,
             "engine": "postgresql",
-            "host": parsed.hostname,
+            "host": f"{parsed.hostname}:{parsed.port or 5432}",
             "database": parsed.path.lstrip("/"),
-            "port": parsed.port
         }
     except Exception as err:
+        err_str = str(err).strip()
+        if "@" in err_str and "://" in err_str:
+            err_str = err_str.split("@")[-1]
         return {
             "status": "error",
             "configured": True,
-            "message": str(err)
+            "message": err_str
         }
 
 
 def init_db():
-    """Initializes tables and indexes, seeding defaults only if empty."""
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
-        if is_pg:
-            logger.info("Initializing Supabase PostgreSQL schema...")
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS site_config (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    headline_word1 TEXT DEFAULT 'HAPPY',
-                    headline_word2 TEXT DEFAULT 'BIRTHDAY',
-                    giant_word TEXT DEFAULT 'YASH',
-                    top_badge TEXT DEFAULT 'NEXT LEVEL UI / UX',
-                    typing_text TEXT DEFAULT 'Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH.',
-                    spec_pill1 TEXT DEFAULT 'CINEMATIC EDITION',
-                    spec_pill2 TEXT DEFAULT 'LEVEL 2026',
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
+    """Initializes PostgreSQL tables and indexes on Supabase. Auto-seeds default content if empty."""
+    logger.info("Verifying and initializing Supabase PostgreSQL schema...")
 
-                CREATE TABLE IF NOT EXISTS chapters (
-                    id SERIAL PRIMARY KEY,
-                    step_index INTEGER NOT NULL UNIQUE,
-                    theme TEXT DEFAULT 'theme-crimson',
-                    badge TEXT NOT NULL,
-                    counter TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    body TEXT NOT NULL,
-                    media_type TEXT DEFAULT 'none',
-                    media_url TEXT DEFAULT '',
-                    media_name TEXT DEFAULT ''
-                );
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS site_config (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                headline_word1 TEXT DEFAULT 'HAPPY',
+                headline_word2 TEXT DEFAULT 'BIRTHDAY',
+                giant_word TEXT DEFAULT 'YASH',
+                top_badge TEXT DEFAULT 'NEXT LEVEL UI / UX',
+                typing_text TEXT DEFAULT 'Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH.',
+                spec_pill1 TEXT DEFAULT 'CINEMATIC EDITION',
+                spec_pill2 TEXT DEFAULT 'LEVEL 2026',
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
 
-                CREATE TABLE IF NOT EXISTS replies (
-                    id SERIAL PRIMARY KEY,
-                    sender TEXT DEFAULT 'Glory',
-                    message TEXT NOT NULL,
-                    chapter_index INTEGER DEFAULT NULL,
-                    chapter_title TEXT DEFAULT '',
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
+            CREATE TABLE IF NOT EXISTS chapters (
+                id SERIAL PRIMARY KEY,
+                step_index INTEGER NOT NULL UNIQUE,
+                theme TEXT DEFAULT 'theme-crimson',
+                badge TEXT NOT NULL,
+                counter TEXT NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT NOT NULL,
+                media_type TEXT DEFAULT 'none',
+                media_url TEXT DEFAULT '',
+                media_name TEXT DEFAULT '',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
 
-                CREATE TABLE IF NOT EXISTS texts (
-                    id SERIAL PRIMARY KEY,
-                    content TEXT NOT NULL,
-                    tag TEXT DEFAULT 'Inspire',
-                    style_preset TEXT DEFAULT 'minimal',
-                    font_size INTEGER DEFAULT 36,
-                    alignment TEXT DEFAULT 'center',
-                    glow INTEGER DEFAULT 1,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
+            CREATE TABLE IF NOT EXISTS replies (
+                id SERIAL PRIMARY KEY,
+                sender TEXT DEFAULT 'Glory',
+                message TEXT NOT NULL,
+                chapter_index INTEGER DEFAULT NULL,
+                chapter_title TEXT DEFAULT '',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
 
-                CREATE INDEX IF NOT EXISTS idx_chapters_step_index ON chapters(step_index);
-                CREATE INDEX IF NOT EXISTS idx_replies_created_at ON replies(created_at DESC);
-                CREATE INDEX IF NOT EXISTS idx_replies_chapter_index ON replies(chapter_index);
-            """)
-        else:
-            logger.info("Initializing local SQLite schema (texts.db)...")
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS site_config (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    headline_word1 TEXT DEFAULT 'HAPPY',
-                    headline_word2 TEXT DEFAULT 'BIRTHDAY',
-                    giant_word TEXT DEFAULT 'YASH',
-                    top_badge TEXT DEFAULT 'NEXT LEVEL UI / UX',
-                    typing_text TEXT DEFAULT 'Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH.',
-                    spec_pill1 TEXT DEFAULT 'CINEMATIC EDITION',
-                    spec_pill2 TEXT DEFAULT 'LEVEL 2026',
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS chapters (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    step_index INTEGER NOT NULL UNIQUE,
-                    theme TEXT DEFAULT 'theme-crimson',
-                    badge TEXT NOT NULL,
-                    counter TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    body TEXT NOT NULL,
-                    media_type TEXT DEFAULT 'none',
-                    media_url TEXT DEFAULT '',
-                    media_name TEXT DEFAULT ''
-                );
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS replies (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    sender TEXT DEFAULT 'Glory',
-                    message TEXT NOT NULL,
-                    chapter_index INTEGER DEFAULT NULL,
-                    chapter_title TEXT DEFAULT '',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS texts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    content TEXT NOT NULL,
-                    tag TEXT DEFAULT 'Inspire',
-                    style_preset TEXT DEFAULT 'minimal',
-                    font_size INTEGER DEFAULT 36,
-                    alignment TEXT DEFAULT 'center',
-                    glow INTEGER DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
+            CREATE TABLE IF NOT EXISTS texts (
+                id SERIAL PRIMARY KEY,
+                content TEXT NOT NULL,
+                tag TEXT DEFAULT 'Inspire',
+                style_preset TEXT DEFAULT 'minimal',
+                font_size INTEGER DEFAULT 36,
+                alignment TEXT DEFAULT 'center',
+                glow INTEGER DEFAULT 1,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_chapters_step_index ON chapters(step_index ASC);
+            CREATE INDEX IF NOT EXISTS idx_replies_chapter_index ON replies(chapter_index);
+            CREATE INDEX IF NOT EXISTS idx_replies_created_at ON replies(created_at DESC);
+        """)
 
         # Seed site_config if empty
         cursor.execute("SELECT COUNT(*) AS count FROM site_config WHERE id = 1;")
         res = cursor.fetchone()
-        count = res["count"] if res else 0
-        if count == 0:
+        if not res or res["count"] == 0:
             cursor.execute("""
                 INSERT INTO site_config (
                     id, headline_word1, headline_word2, giant_word, top_badge,
@@ -291,37 +190,34 @@ def init_db():
                     1, 'HAPPY', 'BIRTHDAY', 'YASH', 'NEXT LEVEL UI / UX',
                     'Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH.',
                     'CINEMATIC EDITION', 'LEVEL 2026'
-                );
+                ) ON CONFLICT (id) DO NOTHING;
             """)
 
         # Seed chapters if empty
         cursor.execute("SELECT COUNT(*) AS count FROM chapters;")
-        res = cursor.fetchone()
-        chap_count = res["count"] if res else 0
-        if chap_count == 0:
+        chap_res = cursor.fetchone()
+        if not chap_res or chap_res["count"] == 0:
             default_chapters = [
                 (0, "theme-crimson", "// CHAPTER 01", "01 / 04", "THE VISIONARY", "Every masterpiece begins with bold vision. Your creativity, relentless drive, and dedication to excellence transform ideas into reality. Keep dreaming big, YASH.", "none", "", ""),
                 (1, "theme-gold", "// CHAPTER 02", "02 / 04", "UNSTOPPABLE DRIVE", "Every challenge conquered has become another testament to your resilience. You continuously raise the standard and inspire everyone around you to aim higher.", "none", "", ""),
                 (2, "theme-cyan", "// CHAPTER 03", "03 / 04", "NEXT-LEVEL CRAFT", "True mastery isn't just about reaching milestones—it's the relentless passion, precision, and infectious positive energy you bring to every endeavor.", "none", "", ""),
                 (3, "theme-aurora", "// FINALE CELEBRATION", "04 / 04", "THE FUTURE IS YOURS", "Here is to another extraordinary year of breaking boundaries, unlocking new heights, and celebrating greatness. Happy Birthday, YASH! Keep shining!", "none", "", "")
             ]
-            if is_pg:
-                import psycopg2.extras
-                psycopg2.extras.execute_values(
-                    cursor,
-                    "INSERT INTO chapters (step_index, theme, badge, counter, title, body, media_type, media_url, media_name) VALUES %s",
-                    default_chapters
-                )
-            else:
-                cursor.executemany(
-                    "INSERT INTO chapters (step_index, theme, badge, counter, title, body, media_type, media_url, media_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    default_chapters
-                )
+            import psycopg2.extras
+            psycopg2.extras.execute_values(
+                cursor,
+                """
+                INSERT INTO chapters (
+                    step_index, theme, badge, counter, title, body, media_type, media_url, media_name
+                ) VALUES %s ON CONFLICT (step_index) DO NOTHING;
+                """,
+                default_chapters
+            )
 
 
 # --- Site Config Operations ---
 def get_site_config() -> Dict[str, Any]:
-    with get_db_cursor() as (cursor, is_pg, conn):
+    with get_db_cursor() as cursor:
         cursor.execute("SELECT * FROM site_config WHERE id = 1;")
         row = cursor.fetchone()
         if row:
@@ -357,23 +253,23 @@ def update_site_config(updates: Dict[str, Any]) -> Dict[str, Any]:
     set_clauses.append("updated_at = CURRENT_TIMESTAMP")
     sql = f"UPDATE site_config SET {', '.join(set_clauses)} WHERE id = 1"
 
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
-        cursor.execute(q(sql, is_pg), values)
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute(sql, values)
 
     return get_site_config()
 
 
 # --- Chapter Operations ---
 def get_chapters() -> List[Dict[str, Any]]:
-    with get_db_cursor() as (cursor, is_pg, conn):
+    with get_db_cursor() as cursor:
         cursor.execute("SELECT * FROM chapters ORDER BY step_index ASC;")
         rows = cursor.fetchall()
         return [dict(r) for r in rows]
 
 
 def get_chapter(step_index: int) -> Optional[Dict[str, Any]]:
-    with get_db_cursor() as (cursor, is_pg, conn):
-        cursor.execute(q("SELECT * FROM chapters WHERE step_index = %s;", is_pg), (step_index,))
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM chapters WHERE step_index = %s;", (step_index,))
         row = cursor.fetchone()
         return dict(row) if row else None
 
@@ -393,17 +289,16 @@ def update_chapter(step_index: int, updates: Dict[str, Any]) -> Optional[Dict[st
     values.append(step_index)
     sql = f"UPDATE chapters SET {', '.join(set_clauses)} WHERE step_index = %s"
 
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
-        cursor.execute(q(sql, is_pg), values)
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute(sql, values)
 
     return get_chapter(step_index)
 
 
 def add_new_chapter(data: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
+    with get_db_cursor(commit=True) as cursor:
         cursor.execute("SELECT COUNT(*) AS count FROM chapters;")
-        res = cursor.fetchone()
-        count = res["count"] if res else 0
+        count = cursor.fetchone()["count"]
         next_idx = count
         total = count + 1
 
@@ -416,24 +311,24 @@ def add_new_chapter(data: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any
         media_url = (data.get("media_url") if data else None) or ""
         media_name = (data.get("media_name") if data else None) or ""
 
-        cursor.execute(q("""
+        cursor.execute("""
             INSERT INTO chapters (step_index, theme, badge, counter, title, body, media_type, media_url, media_name)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, is_pg), (next_idx, theme, badge, counter, title, body, media_type, media_url, media_name))
+        """, (next_idx, theme, badge, counter, title, body, media_type, media_url, media_name))
 
         # Update all chapter counters
         cursor.execute("SELECT id, step_index FROM chapters ORDER BY step_index ASC;")
         all_chaps = cursor.fetchall()
         for chap in all_chaps:
             new_counter = f"{chap['step_index'] + 1:02d} / {total:02d}"
-            cursor.execute(q("UPDATE chapters SET counter = %s WHERE id = %s;", is_pg), (new_counter, chap["id"]))
+            cursor.execute("UPDATE chapters SET counter = %s WHERE id = %s;", (new_counter, chap["id"]))
 
     return get_chapters()
 
 
 def delete_chapter(step_index: int) -> List[Dict[str, Any]]:
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
-        cursor.execute(q("DELETE FROM chapters WHERE step_index = %s;", is_pg), (step_index,))
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("DELETE FROM chapters WHERE step_index = %s;", (step_index,))
 
         cursor.execute("SELECT id FROM chapters ORDER BY step_index ASC;")
         remaining = cursor.fetchall()
@@ -442,34 +337,29 @@ def delete_chapter(step_index: int) -> List[Dict[str, Any]]:
         for new_idx, row in enumerate(remaining):
             new_counter = f"{new_idx + 1:02d} / {new_total:02d}"
             new_badge = f"// CHAPTER {new_idx + 1:02d}"
-            cursor.execute(q("""
+            cursor.execute("""
                 UPDATE chapters 
                 SET step_index = %s, counter = %s, badge = %s
                 WHERE id = %s
-            """, is_pg), (new_idx, new_counter, new_badge, row["id"]))
+            """, (new_idx, new_counter, new_badge, row["id"]))
 
     return get_chapters()
 
 
 # --- Replies Operations ---
 def add_reply(sender: str, message: str, chapter_index: Optional[int] = None, chapter_title: Optional[str] = None) -> Dict[str, Any]:
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
-        new_id = execute_insert(
-            cursor,
-            conn,
-            """
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("""
             INSERT INTO replies (sender, message, chapter_index, chapter_title)
             VALUES (%s, %s, %s, %s)
-            """,
-            (sender.strip() or "Glory", message.strip(), chapter_index, chapter_title or "")
-        )
-        cursor.execute(q("SELECT * FROM replies WHERE id = %s;", is_pg), (new_id,))
+            RETURNING id, sender, message, chapter_index, chapter_title, created_at;
+        """, (sender.strip() or "Glory", message.strip(), chapter_index, chapter_title or ""))
         row = cursor.fetchone()
         return dict(row)
 
 
 def get_replies() -> List[Dict[str, Any]]:
-    with get_db_cursor() as (cursor, is_pg, conn):
+    with get_db_cursor() as cursor:
         cursor.execute("""
             SELECT 
                 r.id, 
@@ -493,7 +383,7 @@ def get_replies() -> List[Dict[str, Any]]:
 
 # --- Texts Operations (Legacy Support) ---
 def get_all_texts() -> List[Dict[str, Any]]:
-    with get_db_cursor() as (cursor, is_pg, conn):
+    with get_db_cursor() as cursor:
         cursor.execute("SELECT * FROM texts ORDER BY id DESC;")
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
@@ -501,22 +391,17 @@ def get_all_texts() -> List[Dict[str, Any]]:
 
 def add_text(content: str, tag: str = "Inspire", style_preset: str = "minimal",
              font_size: int = 36, alignment: str = "center", glow: int = 1) -> Dict[str, Any]:
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
-        new_id = execute_insert(
-            cursor,
-            conn,
-            """
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("""
             INSERT INTO texts (content, tag, style_preset, font_size, alignment, glow)
             VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (content.strip(), tag.strip() or "General", style_preset, font_size, alignment, glow)
-        )
-        cursor.execute(q("SELECT * FROM texts WHERE id = %s;", is_pg), (new_id,))
+            RETURNING id, content, tag, style_preset, font_size, alignment, glow, created_at;
+        """, (content.strip(), tag.strip() or "General", style_preset, font_size, alignment, glow))
         row = cursor.fetchone()
         return dict(row)
 
 
 def delete_text(text_id: int) -> bool:
-    with get_db_cursor(commit=True) as (cursor, is_pg, conn):
-        cursor.execute(q("DELETE FROM texts WHERE id = %s;", is_pg), (text_id,))
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("DELETE FROM texts WHERE id = %s;", (text_id,))
         return cursor.rowcount > 0
