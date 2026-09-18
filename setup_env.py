@@ -30,36 +30,38 @@ def main():
     current_key = os.environ.get("SUPABASE_KEY", "")
     current_db = os.environ.get("DATABASE_URL", "")
 
+    default_proj_url = "https://vkzzdnepmwhsnzmeozxr.supabase.co"
+    active_default = current_url or default_proj_url
+
     # 1. Prompt for SUPABASE_URL
     print("[Step 1/3] Supabase Project URL")
     print("Find this in: Supabase Dashboard -> Project Settings -> API")
-    url_prompt = f"Enter SUPABASE_URL [{current_url}]: " if current_url else "Enter SUPABASE_URL (e.g. https://xxx.supabase.co): "
+    url_prompt = f"Enter SUPABASE_URL [press Enter to use {active_default}]: "
     url_input = input(url_prompt).strip()
-    supabase_url = url_input or current_url
-
-    if not supabase_url:
-        print("[!] SUPABASE_URL cannot be empty.")
-        return
+    supabase_url = url_input or active_default
 
     if not supabase_url.startswith("http://") and not supabase_url.startswith("https://"):
         supabase_url = "https://" + supabase_url
     supabase_url = supabase_url.rstrip("/")
 
     # 2. Prompt for SUPABASE_KEY
-    print("\n[Step 2/3] Supabase API Key (anon or service_role)")
+    print("\n[Step 2/3] Supabase API Key (anon public or service_role)")
     print("Find this in: Supabase Dashboard -> Project Settings -> API -> Project API Keys")
+    print("Look for: 'anon' 'public' key (e.g. starts with 'sb_p' or 'ey')")
     key_prompt = "Enter SUPABASE_KEY: "
     key_input = input(key_prompt).strip()
     supabase_key = key_input or current_key
 
     if not supabase_key:
-        print("[!] SUPABASE_KEY cannot be empty.")
+        print("\n[!] SUPABASE_KEY cannot be empty. Please paste your API key from Supabase.")
         return
 
     # 3. Prompt for DATABASE_URL (Optional)
-    print("\n[Step 3/3] Supabase Database Connection URI (Optional)")
-    print("Find this in: Supabase Dashboard -> Project Settings -> Database -> Connection string (URI)")
-    db_prompt = f"Enter DATABASE_URL (or press Enter to skip): "
+    print("\n[Step 3/3] Supabase Database Connection Pooler URI")
+    print("Find this in: Supabase Dashboard -> Project Settings -> Database -> Connection string -> URI")
+    print("Select: Transaction Pooler (Port 6543, host aws-0-[region].pooler.supabase.com)")
+    print("Example: postgresql://postgres.vkzzdnepmwhsnzmeozxr:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres")
+    db_prompt = "Enter DATABASE_URL (or press Enter to skip for now): "
     db_input = input(db_prompt).strip()
     database_url = db_input or current_db
 
