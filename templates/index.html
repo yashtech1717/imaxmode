@@ -55,9 +55,17 @@
                 <span class="pulse-spark">🔒</span>
                 <span>LOGINS</span>
             </button>
+            <button class="cinema-control-btn btn-feedback-ratings" id="adminFeedbackBtn" style="display: none;" title="View Ratings & Feedback">
+                <span class="pulse-spark">★</span>
+                <span>RATINGS</span>
+            </button>
             <button class="cinema-control-btn btn-reply" id="gloryReplyBtn" style="display: none;" title="Reply to Yash">
                 <span class="pulse-spark">💌</span>
                 <span>REPLY TO YASH</span>
+            </button>
+            <button class="cinema-control-btn btn-feedback" id="gloryFeedbackBtn" style="display: none;" title="Rate Experience & Feedback">
+                <span class="pulse-spark">★</span>
+                <span>FEEDBACK</span>
             </button>
             <button class="cinema-control-btn btn-logout" id="logoutBtn" title="Log Out">
                 <span>⎋ EXIT</span>
@@ -188,11 +196,15 @@
                             </button>
                         </div>
 
-                        <!-- Dedicated Below-Card Reply Trigger for Viewer (Glory) -->
+                        <!-- Dedicated Below-Card Actions for Viewer (Glory) -->
                         <div class="card-reply-trigger-wrap" id="cardReplyTriggerWrap" style="display: none;">
                             <button class="btn-card-reply" id="cardReplyBtn" title="Send a wish or message to Yash about this memory">
                                 <span class="reply-sparkle">💌</span>
                                 <span id="cardReplyBtnLabel">Reply to Yash on this Memory</span>
+                            </button>
+                            <button class="btn-card-feedback" id="cardFeedbackBtn" title="Rate this cinematic journey and leave feedback">
+                                <span class="reply-sparkle">★</span>
+                                <span>Rate Experience</span>
                             </button>
                         </div>
                     </div>
@@ -306,6 +318,10 @@
                     <span>Login History</span>
                     <span class="tab-badge-counter" id="logsBadgeCount">0</span>
                 </button>
+                <button class="studio-tab-btn" data-tab="tabFeedback">
+                    <span>Feedback & Ratings</span>
+                    <span class="tab-badge-counter" id="feedbackBadgeCount">0</span>
+                </button>
             </nav>
 
             <div class="studio-tab-content">
@@ -380,6 +396,14 @@
                                 <option value="theme-ice">Glacial Frost (#38bdf8)</option>
                                 <option value="theme-violet">Ultra Violet (#8b5cf6)</option>
                                 <option value="theme-silver">Obsidian Platinum (#e2e8f0)</option>
+                                <option value="theme-lime">Electric Cyber Lime (#84cc16)</option>
+                                <option value="theme-magenta">Cosmic Hyper Magenta (#d946ef)</option>
+                                <option value="theme-sunset">Molten Sunset Tangerine (#ff5722)</option>
+                                <option value="theme-teal">Deep Aquamarine Teal (#14b8a6)</option>
+                                <option value="theme-indigo">Galactic Deep Indigo (#6366f1)</option>
+                                <option value="theme-coral">Prismatic Radiant Coral (#fb7185)</option>
+                                <option value="theme-mint">Hyper Neon Mint (#2dd4bf)</option>
+                                <option value="theme-copper">Molten Imperial Bronze (#d97706)</option>
                             </select>
                             <div class="theme-swatches-grid" id="themeSwatchesGrid" title="Click a color swatch to select theme">
                                 <button type="button" class="theme-swatch-btn" data-theme="theme-crimson" style="--swatch-color:#ff2a4b;" title="Crimson Red"></button>
@@ -392,6 +416,14 @@
                                 <button type="button" class="theme-swatch-btn" data-theme="theme-ice" style="--swatch-color:#38bdf8;" title="Glacial Frost"></button>
                                 <button type="button" class="theme-swatch-btn" data-theme="theme-violet" style="--swatch-color:#8b5cf6;" title="Ultra Violet"></button>
                                 <button type="button" class="theme-swatch-btn" data-theme="theme-silver" style="--swatch-color:#e2e8f0;" title="Obsidian Platinum"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-lime" style="--swatch-color:#84cc16;" title="Electric Cyber Lime"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-magenta" style="--swatch-color:#d946ef;" title="Cosmic Hyper Magenta"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-sunset" style="--swatch-color:#ff5722;" title="Molten Sunset Tangerine"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-teal" style="--swatch-color:#14b8a6;" title="Deep Aquamarine Teal"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-indigo" style="--swatch-color:#6366f1;" title="Galactic Deep Indigo"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-coral" style="--swatch-color:#fb7185;" title="Prismatic Radiant Coral"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-mint" style="--swatch-color:#2dd4bf;" title="Hyper Neon Mint"></button>
+                                <button type="button" class="theme-swatch-btn" data-theme="theme-copper" style="--swatch-color:#d97706;" title="Molten Imperial Bronze"></button>
                             </div>
                         </div>
 
@@ -459,6 +491,50 @@
                     </div>
                     <div class="replies-list" id="drawerLoginLogsList">
                         <div class="empty-replies">Loading login logs...</div>
+                    </div>
+                </section>
+
+                <!-- TAB 5: 5-Star Feedback & Question Manager -->
+                <section class="tab-pane" id="tabFeedback">
+                    <div class="replies-header">
+                        <span class="cyber-badge">// VIEWER RATINGS & FEEDBACK</span>
+                        <button type="button" class="btn-refresh-replies" id="refreshDrawerFeedbackBtn">↺ REFRESH</button>
+                    </div>
+
+                    <!-- Active Question & Question Creator -->
+                    <div style="margin-bottom: 18px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px;">
+                        <label style="font-family: var(--font-tech); font-size: 0.65rem; color: #f59e0b; font-weight: 700; letter-spacing: 0.12em; display: block; margin-bottom: 6px;">
+                            CURRENT ACTIVE QUESTION FOR VIEWER
+                        </label>
+                        <div id="drawerActiveQuestionText" style="font-family: var(--font-heading); font-size: 0.88rem; color: #fff; margin-bottom: 14px; font-weight: 600; line-height: 1.4;">
+                            Loading active question...
+                        </div>
+
+                        <form id="adminNewQuestionForm">
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="font-size: 0.62rem; color: rgba(255,255,255,0.5);">CREATE / UPDATE VIEWER QUESTION</label>
+                                <input type="text" id="adminNewQuestionInput" placeholder="e.g. How much did you enjoy this surprise?" required>
+                            </div>
+                            <button type="submit" class="btn-post-question" id="adminPublishQuestionBtn">
+                                <span>✦ PUBLISH QUESTION</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Feedback Stats Overview -->
+                    <div class="feedback-stats-grid" id="drawerFeedbackStats">
+                        <div class="feedback-stat-card">
+                            <div class="feedback-stat-num" id="drawerAvgRating">0.0 ★</div>
+                            <div class="feedback-stat-label">AVERAGE RATING</div>
+                        </div>
+                        <div class="feedback-stat-card">
+                            <div class="feedback-stat-num" id="drawerTotalFeedbackCount">0</div>
+                            <div class="feedback-stat-label">TOTAL RATINGS</div>
+                        </div>
+                    </div>
+
+                    <div class="replies-list" id="drawerFeedbackList">
+                        <div class="empty-replies">Loading feedback submissions...</div>
                     </div>
                 </section>
             </div>
@@ -622,6 +698,119 @@
                         <span class="radar-icon">📡</span>
                     </div>
                     <p class="radar-text">SCANNING LOGIN SESSIONS...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 7. GLORY'S 5-STAR FEEDBACK & REVIEW MODAL                                  -->
+    <!-- ========================================================================== -->
+    <div class="modal-backdrop" id="feedbackModal" style="display: none;">
+        <div class="modal-box feedback-box">
+            <div class="portal-card-sheen"></div>
+            <div class="modal-header">
+                <div class="cyber-accent-bar" style="margin-bottom: 8px;">
+                    <span class="theme-line red-line"></span>
+                    <span class="cyber-badge">// SYSTEM FEEDBACK & RATINGS</span>
+                    <span class="theme-line red-line"></span>
+                </div>
+                <h3 class="modal-title">RATE YOUR EXPERIENCE</h3>
+                <p class="modal-subtitle">Your rating will be transmitted directly to Yash's Admin Dashboard</p>
+                <button class="btn-modal-close" id="feedbackModalCloseBtn">✕</button>
+            </div>
+
+            <!-- Active Question Banner -->
+            <div class="feedback-question-banner">
+                <span class="banner-label">YASH ASKS YOU:</span>
+                <span id="viewerFeedbackQuestionText">How would you rate this cinematic birthday journey and surprise for Yash?</span>
+            </div>
+
+            <form id="gloryFeedbackForm">
+                <input type="hidden" id="feedbackQuestionId" value="1">
+                <input type="hidden" id="selectedStarRating" value="0">
+
+                <!-- 5 Interactive Stars Group (Initially Empty) -->
+                <div class="star-rating-container">
+                    <div class="star-rating-group" id="starRatingGroup">
+                        <button type="button" class="star-btn" data-star="1" title="1 Star">★</button>
+                        <button type="button" class="star-btn" data-star="2" title="2 Stars">★</button>
+                        <button type="button" class="star-btn" data-star="3" title="3 Stars">★</button>
+                        <button type="button" class="star-btn" data-star="4" title="4 Stars">★</button>
+                        <button type="button" class="star-btn" data-star="5" title="5 Stars">★</button>
+                    </div>
+                    <div class="rating-descriptor-text" id="ratingDescriptorText">Select stars to rate (1 to 5)</div>
+                </div>
+
+                <div class="form-group">
+                    <label>PERSONAL NOTE / REFLECTIONS (OPTIONAL)</label>
+                    <textarea id="feedbackCommentInput" rows="3" placeholder="Tell Yash what you thought of this experience..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-portal-submit" id="feedbackSubmitBtn" disabled>
+                    <span class="btn-glow-layer"></span>
+                    <span id="feedbackSubmitBtnLabel">TRANSMIT FEEDBACK (★ 0/5)</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 8. ADMIN DEDICATED FEEDBACK & RATINGS AUDIT MODAL                           -->
+    <!-- ========================================================================== -->
+    <div class="modal-backdrop logs-modal-backdrop" id="adminFeedbackModal" style="display: none;">
+        <div class="modal-box logs-viewer-box" style="max-width: 680px;">
+            <div class="portal-card-sheen"></div>
+            <div class="modal-header logs-viewer-header">
+                <div class="media-title-group">
+                    <div class="cyber-accent-bar" style="margin-bottom: 6px;">
+                        <span class="theme-line red-line"></span>
+                        <span class="cyber-badge">// SYSTEM RATINGS // VIEWER FEEDBACK AUDIT</span>
+                        <span class="theme-line red-line"></span>
+                    </div>
+                    <div class="replies-title-row">
+                        <h3 class="media-title-text">★ 5-STAR RATINGS & REVIEWS</h3>
+                        <span class="logs-count-pill" id="adminFeedbackCountPill">0 REVIEWS</span>
+                    </div>
+                </div>
+                <div class="replies-header-actions">
+                    <button type="button" class="btn-refresh-replies" id="modalRefreshFeedbackBtn" title="Refresh verified feedback ratings">
+                        <span class="btn-spin-icon">↺</span>
+                        <span>REFRESH</span>
+                    </button>
+                    <button class="btn-modal-close" id="adminFeedbackModalCloseBtn">✕</button>
+                </div>
+            </div>
+
+            <!-- Stats Overview Row -->
+            <div class="feedback-stats-grid" style="margin-bottom: 16px;">
+                <div class="feedback-stat-card">
+                    <div class="feedback-stat-num" id="adminModalAvgRating">0.0 ★</div>
+                    <div class="feedback-stat-label">AVERAGE RATING</div>
+                </div>
+                <div class="feedback-stat-card">
+                    <div class="feedback-stat-num" id="adminModalTotalCount">0</div>
+                    <div class="feedback-stat-label">TOTAL RATINGS</div>
+                </div>
+                <div class="feedback-stat-card">
+                    <div class="feedback-stat-num" id="adminModalFiveStarCount">0</div>
+                    <div class="feedback-stat-label">5-STAR REVIEWS</div>
+                </div>
+            </div>
+
+            <!-- Active Question Badge -->
+            <div class="feedback-card-question" style="margin-bottom: 14px; font-size: 0.82rem; padding: 10px 14px;">
+                <strong style="color: #f59e0b;">ACTIVE QUESTION:</strong> <span id="adminModalActiveQuestionText">Loading...</span>
+            </div>
+
+            <div class="login-logs-container" id="adminFeedbackListContainer">
+                <div class="empty-replies">
+                    <div class="radar-scan-box">
+                        <div class="radar-sweep"></div>
+                        <span class="radar-icon">★</span>
+                    </div>
+                    <p class="radar-text">SCANNING FEEDBACK REVIEWS...</p>
                 </div>
             </div>
         </div>

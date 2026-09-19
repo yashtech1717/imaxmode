@@ -187,11 +187,38 @@ def init_db():
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS feedback_questions (
+                id SERIAL PRIMARY KEY,
+                question TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS feedback_responses (
+                id SERIAL PRIMARY KEY,
+                question_id INTEGER,
+                question_text TEXT NOT NULL,
+                sender TEXT DEFAULT 'Glory',
+                rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                comment TEXT DEFAULT '',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE INDEX IF NOT EXISTS idx_chapters_step_index ON chapters(step_index ASC);
             CREATE INDEX IF NOT EXISTS idx_replies_chapter_index ON replies(chapter_index);
             CREATE INDEX IF NOT EXISTS idx_replies_created_at ON replies(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_feedback_responses_created_at ON feedback_responses(created_at DESC);
         """)
+
+        # Seed initial feedback question if empty
+        cursor.execute("SELECT COUNT(*) AS count FROM feedback_questions;")
+        q_cnt = cursor.fetchone()
+        if not q_cnt or q_cnt["count"] == 0:
+            cursor.execute("""
+                INSERT INTO feedback_questions (question, is_active)
+                VALUES ('How would you rate this cinematic birthday journey and surprise for Yash?', TRUE);
+            """)
 
         # Seed site_config if empty
         cursor.execute("SELECT COUNT(*) AS count FROM site_config WHERE id = 1;")
@@ -546,3 +573,168 @@ def get_login_logs(limit: int = 100) -> List[Dict[str, Any]]:
     except Exception as err:
         logger.warning("Could not read login logs from PostgreSQL: %s", err)
         return []
+
+
+# --- 5-Star Feedback & Question Operations ---
+DEFAULT_FEEDBACK_QUESTION = {
+    "id": 1,
+    "question": "How would you rate this cinematic birthday journey and surprise for Yash?",
+    "is_active": True
+}
+
+
+def get_active_feedback_question() -> Dict[str, Any]:
+    """Retrieves the current active feedback question for the viewer dashboard."""
+    if not is_db_configured():
+        return DEFAULT_FEEDBACK_QUESTION
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, question, is_active, created_at
+                FROM feedback_questions
+                WHERE is_active = TRUE
+                ORDER BY id DESC
+                LIMIT 1;
+            """)
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+            return DEFAULT_FEEDBACK_QUESTION
+    except Exception as err:
+        logger.warning("Could not retrieve active feedback question from PostgreSQL: %s", err)
+        return DEFAULT_FEEDBACK_QUESTION
+
+
+def create_feedback_question(question: str) -> Dict[str, Any]:
+    """Admin sets a new feedback question and marks it as active."""
+    cleaned = (question or "").strip()
+    if not cleaned:
+        raise ValueError("Question text cannot be empty")
+    if not is_db_configured():
+        return {"id": 1, "question": cleaned, "is_active": True}
+
+    with get_db_cursor(commit=True) as cursor:
+        # Mark all prior questions as inactive
+        cursor.execute("UPDATE feedback_questions SET is_active = FALSE WHERE is_active = TRUE;")
+        cursor.execute("""
+            INSERT INTO feedback_questions (question, is_active)
+            VALUES (%s, TRUE)
+            RETURNING id, question, is_active, created_at;
+        """, (cleaned,))
+        row = cursor.fetchone()
+        return dict(row)
+
+
+def get_all_feedback_questions(limit: int = 50) -> List[Dict[str, Any]]:
+    """Fetches feedback questions history for admin inspection."""
+    if not is_db_configured():
+        return [DEFAULT_FEEDBACK_QUESTION]
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, question, is_active, created_at
+                FROM feedback_questions
+                ORDER BY id DESC
+                LIMIT %s;
+            """, (limit,))
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows] if rows else [DEFAULT_FEEDBACK_QUESTION]
+    except Exception as err:
+        logger.warning("Could not fetch feedback questions from PostgreSQL: %s", err)
+        return [DEFAULT_FEEDBACK_QUESTION]
+
+
+def submit_feedback(
+    question_id: Optional[int],
+    question_text: str,
+    rating: int,
+    sender: str = "Glory",
+    comment: str = ""
+) -> Dict[str, Any]:
+    """Records a 5-star rating submission from Glory or viewer."""
+    if rating < 1 or rating > 5:
+        raise ValueError("Rating must be an integer between 1 and 5 stars")
+
+    q_text = (question_text or "").strip() or DEFAULT_FEEDBACK_QUESTION["question"]
+    snd = (sender or "Glory").strip()
+    cmt = (comment or "").strip()
+
+    if not is_db_configured():
+        return {
+            "id": 1,
+            "question_id": question_id,
+            "question_text": q_text,
+            "sender": snd,
+            "rating": rating,
+            "comment": cmt
+        }
+
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("""
+            INSERT INTO feedback_responses (question_id, question_text, sender, rating, comment)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id, question_id, question_text, sender, rating, comment, created_at;
+        """, (question_id, q_text, snd, rating, cmt))
+        row = cursor.fetchone()
+        return dict(row)
+
+
+def get_feedback_responses(limit: int = 100) -> List[Dict[str, Any]]:
+    """Retrieves all feedback responses ordered by newest first."""
+    if not is_db_configured():
+        return []
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, question_id, question_text, sender, rating, comment, created_at
+                FROM feedback_responses
+                ORDER BY id DESC
+                LIMIT %s;
+            """, (limit,))
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows]
+    except Exception as err:
+        logger.warning("Could not fetch feedback responses from PostgreSQL: %s", err)
+        return []
+
+
+def get_feedback_stats() -> Dict[str, Any]:
+    """Calculates overall feedback statistics: total responses, average star rating, and breakdown."""
+    default_stats = {
+        "total_count": 0,
+        "average_rating": 0.0,
+        "breakdown": {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    }
+    if not is_db_configured():
+        return default_stats
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    COUNT(*) AS total_count,
+                    COALESCE(AVG(rating), 0.0) AS avg_rating,
+                    COUNT(*) FILTER (WHERE rating = 5) AS stars_5,
+                    COUNT(*) FILTER (WHERE rating = 4) AS stars_4,
+                    COUNT(*) FILTER (WHERE rating = 3) AS stars_3,
+                    COUNT(*) FILTER (WHERE rating = 2) AS stars_2,
+                    COUNT(*) FILTER (WHERE rating = 1) AS stars_1
+                FROM feedback_responses;
+            """)
+            row = cursor.fetchone()
+            if not row:
+                return default_stats
+            return {
+                "total_count": int(row["total_count"] or 0),
+                "average_rating": round(float(row["avg_rating"] or 0.0), 1),
+                "breakdown": {
+                    5: int(row["stars_5"] or 0),
+                    4: int(row["stars_4"] or 0),
+                    3: int(row["stars_3"] or 0),
+                    2: int(row["stars_2"] or 0),
+                    1: int(row["stars_1"] or 0)
+                }
+            }
+    except Exception as err:
+        logger.warning("Could not calculate feedback stats from PostgreSQL: %s", err)
+        return default_stats
+

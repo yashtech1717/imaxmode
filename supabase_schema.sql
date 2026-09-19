@@ -102,6 +102,31 @@ CREATE TABLE IF NOT EXISTS login_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC);
 
+-- 6. Feedback Questions Table (Questions created by Admin / Yash)
+CREATE TABLE IF NOT EXISTS feedback_questions (
+    id SERIAL PRIMARY KEY,
+    question TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed initial question if empty
+INSERT INTO feedback_questions (question, is_active)
+VALUES ('How would you rate this cinematic birthday journey and surprise for Yash?', TRUE)
+ON CONFLICT DO NOTHING;
+
+-- 7. Feedback Responses Table (5-Star Ratings & Notes submitted by Viewer / Glory)
+CREATE TABLE IF NOT EXISTS feedback_responses (
+    id SERIAL PRIMARY KEY,
+    question_id INTEGER REFERENCES feedback_questions(id) ON DELETE SET NULL,
+    question_text TEXT NOT NULL,
+    sender TEXT DEFAULT 'Glory',
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_responses_created_at ON feedback_responses(created_at DESC);
+
 -- ==============================================================================
 -- SUPABASE STORAGE BUCKET CONFIGURATION
 -- ==============================================================================

@@ -40,7 +40,13 @@ from db import (
     get_login_logs,
     get_all_texts,
     add_text,
-    delete_text
+    delete_text,
+    get_active_feedback_question,
+    create_feedback_question,
+    get_all_feedback_questions,
+    submit_feedback,
+    get_feedback_responses,
+    get_feedback_stats
 )
 
 logger = logging.getLogger("aura.server")
@@ -119,6 +125,16 @@ class TextCreate(BaseModel):
     font_size: Optional[int] = Field(default=36, ge=16, le=96)
     alignment: Optional[str] = Field(default="center")
     glow: Optional[int] = Field(default=1)
+
+class FeedbackSubmit(BaseModel):
+    question_id: Optional[int] = None
+    question_text: Optional[str] = ""
+    rating: int = Field(..., ge=1, le=5)
+    sender: Optional[str] = "Glory"
+    comment: Optional[str] = ""
+
+class QuestionCreate(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
 
 @app.on_event("startup")
 def on_startup():
@@ -273,6 +289,37 @@ def submit_reply(payload: ReplyCreate):
         chapter_title=payload.chapter_title
     )
     return {"status": "success", "data": created}
+ 
+# --- 5-Star Feedback & Question Endpoints ---
+@app.get("/api/feedback/active-question")
+def fetch_active_feedback_question():
+    return {"status": "success", "data": get_active_feedback_question()}
+
+@app.post("/api/feedback/submit")
+def submit_feedback_endpoint(payload: FeedbackSubmit):
+    res = submit_feedback(
+        question_id=payload.question_id,
+        question_text=payload.question_text,
+        rating=payload.rating,
+        sender=payload.sender or "Glory",
+        comment=payload.comment or ""
+    )
+    return {"status": "success", "data": res}
+
+@app.get("/api/admin/feedback")
+def fetch_admin_feedback():
+    return {
+        "status": "success",
+        "active_question": get_active_feedback_question(),
+        "all_questions": get_all_feedback_questions(),
+        "stats": get_feedback_stats(),
+        "responses": get_feedback_responses()
+    }
+
+@app.post("/api/admin/feedback/question")
+def create_feedback_question_endpoint(payload: QuestionCreate):
+    new_q = create_feedback_question(payload.question)
+    return {"status": "success", "data": new_q}
 
 # --- Legacy Endpoints ---
 @app.get("/api/texts")

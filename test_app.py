@@ -212,6 +212,75 @@ class TestMockedCloudEndpoints(unittest.TestCase):
             "TestBrowser/1.0"
         )
 
+    @patch("main.get_active_feedback_question")
+    def test_active_feedback_question(self, mock_active_q):
+        mock_active_q.return_value = {
+            "id": 1,
+            "question": "How did you find this surprise?",
+            "is_active": True
+        }
+        res = self.client.get("/api/feedback/active-question")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["data"]["question"], "How did you find this surprise?")
+
+    @patch("main.submit_feedback")
+    def test_submit_feedback_success(self, mock_submit_fb):
+        mock_submit_fb.return_value = {
+            "id": 1,
+            "question_id": 1,
+            "question_text": "How did you find this surprise?",
+            "sender": "Glory",
+            "rating": 5,
+            "comment": "Unbelievable masterpiece!"
+        }
+        res = self.client.post("/api/feedback/submit", json={
+            "question_id": 1,
+            "question_text": "How did you find this surprise?",
+            "sender": "Glory",
+            "rating": 5,
+            "comment": "Unbelievable masterpiece!"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["data"]["rating"], 5)
+
+    @patch("main.get_feedback_responses")
+    @patch("main.get_feedback_stats")
+    @patch("main.get_all_feedback_questions")
+    @patch("main.get_active_feedback_question")
+    def test_admin_fetch_feedback(self, mock_act_q, mock_all_q, mock_stats, mock_resps):
+        mock_act_q.return_value = {"id": 1, "question": "Active Q"}
+        mock_all_q.return_value = [{"id": 1, "question": "Active Q"}]
+        mock_stats.return_value = {"total_count": 1, "average_rating": 5.0, "breakdown": {5: 1}}
+        mock_resps.return_value = [
+            {"id": 1, "question_id": 1, "sender": "Glory", "rating": 5, "comment": "Loved it"}
+        ]
+        res = self.client.get("/api/admin/feedback")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["stats"]["average_rating"], 5.0)
+        self.assertEqual(len(data["responses"]), 1)
+
+    @patch("main.create_feedback_question")
+    def test_admin_create_feedback_question(self, mock_create_q):
+        mock_create_q.return_value = {
+            "id": 2,
+            "question": "What was your favorite chapter?",
+            "is_active": True
+        }
+        res = self.client.post("/api/admin/feedback/question", json={
+            "question": "What was your favorite chapter?"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["data"]["question"], "What was your favorite chapter?")
+
+
 
     def test_diagnostic_endpoints(self):
         # Test HTML view

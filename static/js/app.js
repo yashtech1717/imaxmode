@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardReplyTriggerWrap = document.getElementById('cardReplyTriggerWrap');
     const cardReplyBtn = document.getElementById('cardReplyBtn');
     const cardReplyBtnLabel = document.getElementById('cardReplyBtnLabel');
+    const cardFeedbackBtn = document.getElementById('cardFeedbackBtn');
 
     // Auth & Header Control Elements
     const authControls = document.getElementById('authControls');
@@ -77,8 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminStudioBtn = document.getElementById('adminStudioBtn');
     const adminViewRepliesBtn = document.getElementById('adminViewRepliesBtn');
     const adminLoginLogsBtn = document.getElementById('adminLoginLogsBtn');
+    const adminFeedbackBtn = document.getElementById('adminFeedbackBtn');
     const headerRepliesCount = document.getElementById('headerRepliesCount');
     const gloryReplyBtn = document.getElementById('gloryReplyBtn');
+    const gloryFeedbackBtn = document.getElementById('gloryFeedbackBtn');
     const logoutBtn = document.getElementById('logoutBtn');
 
     // Login Portal Modal Elements
@@ -140,6 +143,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const drawerLoginLogsList = document.getElementById('drawerLoginLogsList');
     const refreshDrawerLogsBtn = document.getElementById('refreshDrawerLogsBtn');
 
+    // Studio Tab 5: Feedback & Ratings
+    const feedbackBadgeCount = document.getElementById('feedbackBadgeCount');
+    const refreshDrawerFeedbackBtn = document.getElementById('refreshDrawerFeedbackBtn');
+    const drawerActiveQuestionText = document.getElementById('drawerActiveQuestionText');
+    const adminNewQuestionForm = document.getElementById('adminNewQuestionForm');
+    const adminNewQuestionInput = document.getElementById('adminNewQuestionInput');
+    const adminPublishQuestionBtn = document.getElementById('adminPublishQuestionBtn');
+    const drawerAvgRating = document.getElementById('drawerAvgRating');
+    const drawerTotalFeedbackCount = document.getElementById('drawerTotalFeedbackCount');
+    const drawerFeedbackList = document.getElementById('drawerFeedbackList');
+
     // Dedicated Admin Replies Modal Elements
     const adminRepliesModal = document.getElementById('adminRepliesModal');
     const adminRepliesModalCloseBtn = document.getElementById('adminRepliesModalCloseBtn');
@@ -153,6 +167,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalRefreshLogsBtn = document.getElementById('modalRefreshLogsBtn');
     const loginLogsContainer = document.getElementById('loginLogsContainer');
     const logsCountPill = document.getElementById('logsCountPill');
+
+    // Dedicated Admin Feedback Modal Elements
+    const adminFeedbackModal = document.getElementById('adminFeedbackModal');
+    const adminFeedbackModalCloseBtn = document.getElementById('adminFeedbackModalCloseBtn');
+    const modalRefreshFeedbackBtn = document.getElementById('modalRefreshFeedbackBtn');
+    const adminFeedbackCountPill = document.getElementById('adminFeedbackCountPill');
+    const adminModalAvgRating = document.getElementById('adminModalAvgRating');
+    const adminModalTotalCount = document.getElementById('adminModalTotalCount');
+    const adminModalFiveStarCount = document.getElementById('adminModalFiveStarCount');
+    const adminModalActiveQuestionText = document.getElementById('adminModalActiveQuestionText');
+    const adminFeedbackListContainer = document.getElementById('adminFeedbackListContainer');
+
+    // Glory Feedback Modal Elements
+    const feedbackModal = document.getElementById('feedbackModal');
+    const feedbackModalCloseBtn = document.getElementById('feedbackModalCloseBtn');
+    const viewerFeedbackQuestionText = document.getElementById('viewerFeedbackQuestionText');
+    const gloryFeedbackForm = document.getElementById('gloryFeedbackForm');
+    const feedbackQuestionId = document.getElementById('feedbackQuestionId');
+    const selectedStarRating = document.getElementById('selectedStarRating');
+    const starRatingGroup = document.getElementById('starRatingGroup');
+    const ratingDescriptorText = document.getElementById('ratingDescriptorText');
+    const feedbackCommentInput = document.getElementById('feedbackCommentInput');
+    const feedbackSubmitBtn = document.getElementById('feedbackSubmitBtn');
+    const feedbackSubmitBtnLabel = document.getElementById('feedbackSubmitBtnLabel');
 
     // Glory Reply Modal Elements
     const replyModal = document.getElementById('replyModal');
@@ -433,7 +471,15 @@ document.addEventListener('DOMContentLoaded', () => {
         'theme-rose': ['rgba(244, 63, 94,', 'rgba(251, 113, 133,', 'rgba(253, 164, 175,'],
         'theme-ice': ['rgba(56, 189, 248,', 'rgba(186, 230, 253,', 'rgba(224, 242, 254,'],
         'theme-violet': ['rgba(139, 92, 246,', 'rgba(196, 181, 253,', 'rgba(167, 139, 250,'],
-        'theme-silver': ['rgba(226, 232, 240,', 'rgba(255, 255, 255,', 'rgba(203, 213, 225,']
+        'theme-silver': ['rgba(226, 232, 240,', 'rgba(255, 255, 255,', 'rgba(203, 213, 225,'],
+        'theme-lime': ['rgba(132, 204, 22,', 'rgba(190, 242, 100,', 'rgba(217, 249, 157,'],
+        'theme-magenta': ['rgba(217, 70, 239,', 'rgba(244, 114, 182,', 'rgba(251, 207, 232,'],
+        'theme-sunset': ['rgba(255, 87, 34,', 'rgba(251, 146, 60,', 'rgba(254, 215, 170,'],
+        'theme-teal': ['rgba(20, 184, 166,', 'rgba(45, 212, 191,', 'rgba(153, 246, 228,'],
+        'theme-indigo': ['rgba(99, 102, 241,', 'rgba(165, 180, 252,', 'rgba(199, 210, 254,'],
+        'theme-coral': ['rgba(251, 113, 133,', 'rgba(253, 164, 175,', 'rgba(254, 205, 211,'],
+        'theme-mint': ['rgba(45, 212, 191,', 'rgba(94, 234, 212,', 'rgba(204, 251, 241,'],
+        'theme-copper': ['rgba(217, 119, 6,', 'rgba(245, 158, 11,', 'rgba(253, 230, 138,']
     };
     let currentThemeEmberPalette = THEME_EMBER_PALETTES['theme-crimson'];
 
@@ -709,16 +755,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (adminStudioBtn) adminStudioBtn.style.display = 'inline-flex';
                 if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'inline-flex';
                 if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'inline-flex';
+                if (adminFeedbackBtn) adminFeedbackBtn.style.display = 'inline-flex';
                 if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
+                if (gloryFeedbackBtn) gloryFeedbackBtn.style.display = 'none';
                 if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
                 fetchAndRenderRichReplies();
                 fetchAndRenderLoginLogs();
+                fetchAndRenderAdminFeedback();
             } else {
                 if (adminStudioBtn) adminStudioBtn.style.display = 'none';
                 if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
                 if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
+                if (adminFeedbackBtn) adminFeedbackBtn.style.display = 'none';
                 if (gloryReplyBtn) gloryReplyBtn.style.display = 'inline-flex';
+                if (gloryFeedbackBtn) gloryFeedbackBtn.style.display = 'inline-flex';
                 if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'flex';
+                if (cardFeedbackBtn) cardFeedbackBtn.style.display = 'inline-flex';
             }
 
             startTypewriter();
@@ -729,7 +781,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (adminStudioBtn) adminStudioBtn.style.display = 'none';
             if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
             if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
+            if (adminFeedbackBtn) adminFeedbackBtn.style.display = 'none';
             if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
+            if (gloryFeedbackBtn) gloryFeedbackBtn.style.display = 'none';
             if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
         }
     }
@@ -765,17 +819,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (adminStudioBtn) adminStudioBtn.style.display = 'inline-flex';
                         if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'inline-flex';
                         if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'inline-flex';
+                        if (adminFeedbackBtn) adminFeedbackBtn.style.display = 'inline-flex';
                         if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
+                        if (gloryFeedbackBtn) gloryFeedbackBtn.style.display = 'none';
                         if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
                         fetchAndRenderRichReplies();
                         fetchAndRenderLoginLogs();
+                        fetchAndRenderAdminFeedback();
                         showToast(`Welcome back, Yash! Admin studio unlocked ✦`);
                     } else {
                         if (adminStudioBtn) adminStudioBtn.style.display = 'none';
                         if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
                         if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
+                        if (adminFeedbackBtn) adminFeedbackBtn.style.display = 'none';
                         if (gloryReplyBtn) gloryReplyBtn.style.display = 'inline-flex';
+                        if (gloryFeedbackBtn) gloryFeedbackBtn.style.display = 'inline-flex';
                         if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'flex';
+                        if (cardFeedbackBtn) cardFeedbackBtn.style.display = 'inline-flex';
                         showToast(`Welcome, Glory! Cinematic portal unlocked ✦`);
                     }
 
@@ -802,10 +862,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pwdToggleBtn && loginPassword) {
         pwdToggleBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            const isPwd = loginPassword.type === 'password';
-            loginPassword.type = isPwd ? 'text' : 'password';
-            if (eyeOpenIcon) eyeOpenIcon.style.display = isPwd ? 'none' : 'block';
-            if (eyeSlashIcon) eyeSlashIcon.style.display = isPwd ? 'block' : 'none';
+            const isPassword = loginPassword.type === 'password';
+            loginPassword.type = isPassword ? 'text' : 'password';
+            if (eyeOpenIcon) eyeOpenIcon.style.display = isPassword ? 'none' : 'block';
+            if (eyeSlashIcon) eyeSlashIcon.style.display = isPassword ? 'block' : 'none';
         });
     }
 
@@ -821,7 +881,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (adminStudioBtn) adminStudioBtn.style.display = 'none';
             if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
             if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
+            if (adminFeedbackBtn) adminFeedbackBtn.style.display = 'none';
             if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
+            if (gloryFeedbackBtn) gloryFeedbackBtn.style.display = 'none';
             if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
             if (loginPassword) {
                 loginPassword.value = '';
@@ -1669,6 +1731,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchAndRenderLoginLogs();
             } else if (targetTab === 'tabReplies') {
                 fetchAndRenderRichReplies();
+            } else if (targetTab === 'tabFeedback') {
+                fetchAndRenderAdminFeedback();
             }
         });
     });
@@ -2145,7 +2209,343 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // 10. Viewport & Parallax Engine + Stardust Comet Trails
+    // 10.5 5-Star Feedback Question & Review Engine (Viewer & Admin)
+    // ==========================================================================
+    let currentSelectedRating = 0;
+    const STAR_DESCRIPTIONS = {
+        0: 'Select stars to rate (1 to 5)',
+        1: '★ 1 / 5 – Needs Improvement',
+        2: '★ 2 / 5 – Nice Effort',
+        3: '★ 3 / 5 – Loved The Journey!',
+        4: '★ 4 / 5 – Extraordinary & Heartfelt!',
+        5: '★ 5 / 5 – Absolute Cinematic Masterpiece! ★'
+    };
+
+    const starBtns = starRatingGroup ? starRatingGroup.querySelectorAll('.star-btn') : [];
+
+    function highlightStars(count) {
+        starBtns.forEach((btn, idx) => {
+            const val = idx + 1;
+            btn.classList.toggle('hovered', val <= count);
+        });
+    }
+
+    function setStarRating(count) {
+        currentSelectedRating = count;
+        if (selectedStarRating) selectedStarRating.value = count;
+
+        starBtns.forEach((btn, idx) => {
+            const val = idx + 1;
+            btn.classList.toggle('active', val <= count);
+            btn.classList.remove('hovered');
+        });
+
+        if (ratingDescriptorText) {
+            ratingDescriptorText.textContent = STAR_DESCRIPTIONS[count] || STAR_DESCRIPTIONS[0];
+            ratingDescriptorText.classList.toggle('active', count > 0);
+        }
+
+        if (feedbackSubmitBtn) {
+            feedbackSubmitBtn.disabled = (count === 0);
+        }
+        if (feedbackSubmitBtnLabel) {
+            feedbackSubmitBtnLabel.textContent = count > 0 ? `TRANSMIT FEEDBACK (★ ${count}/5)` : 'SELECT RATING';
+        }
+    }
+
+    starBtns.forEach((btn, idx) => {
+        const starVal = idx + 1;
+        btn.addEventListener('mouseenter', () => {
+            highlightStars(starVal);
+            if (ratingDescriptorText) {
+                ratingDescriptorText.textContent = STAR_DESCRIPTIONS[starVal];
+            }
+        });
+
+        btn.addEventListener('mouseleave', () => {
+            highlightStars(currentSelectedRating);
+            if (ratingDescriptorText) {
+                ratingDescriptorText.textContent = STAR_DESCRIPTIONS[currentSelectedRating];
+            }
+        });
+
+        btn.addEventListener('click', () => {
+            setStarRating(starVal);
+        });
+    });
+
+    async function openFeedbackModal() {
+        if (!feedbackModal) return;
+        setStarRating(0);
+        if (feedbackCommentInput) feedbackCommentInput.value = '';
+
+        try {
+            const res = await fetch('/api/feedback/active-question');
+            const data = await res.json();
+            if (data.status === 'success' && data.data) {
+                if (viewerFeedbackQuestionText) {
+                    viewerFeedbackQuestionText.textContent = data.data.question;
+                }
+                if (feedbackQuestionId) {
+                    feedbackQuestionId.value = data.data.id || 1;
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching active feedback question:', err);
+        }
+
+        feedbackModal.style.display = 'flex';
+    }
+
+    if (gloryFeedbackBtn) {
+        gloryFeedbackBtn.addEventListener('click', openFeedbackModal);
+    }
+    if (cardFeedbackBtn) {
+        cardFeedbackBtn.addEventListener('click', openFeedbackModal);
+    }
+
+    if (feedbackModalCloseBtn && feedbackModal) {
+        feedbackModalCloseBtn.addEventListener('click', () => {
+            feedbackModal.style.display = 'none';
+        });
+    }
+
+    if (feedbackModal) {
+        feedbackModal.addEventListener('click', (e) => {
+            if (e.target === feedbackModal) feedbackModal.style.display = 'none';
+        });
+    }
+
+    if (gloryFeedbackForm) {
+        gloryFeedbackForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (currentSelectedRating < 1 || currentSelectedRating > 5) {
+                showToast('Please tap on the stars to select your rating (1-5) ✦');
+                return;
+            }
+
+            const qId = feedbackQuestionId ? parseInt(feedbackQuestionId.value, 10) : null;
+            const qText = viewerFeedbackQuestionText ? viewerFeedbackQuestionText.textContent.trim() : '';
+            const comment = feedbackCommentInput ? feedbackCommentInput.value.trim() : '';
+            const sender = currentUser || 'Glory';
+
+            try {
+                if (feedbackSubmitBtn) feedbackSubmitBtn.disabled = true;
+                const res = await fetch('/api/feedback/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question_id: qId,
+                        question_text: qText,
+                        rating: currentSelectedRating,
+                        sender: sender,
+                        comment: comment
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    feedbackModal.style.display = 'none';
+                    showToast(`Thank you, Glory! Your ${currentSelectedRating}-star rating was sent to Yash! ✦`);
+                    playSupernovaFanfare();
+                    fetchAndRenderAdminFeedback();
+                } else {
+                    showToast('Failed to submit feedback.');
+                }
+            } catch (err) {
+                console.error('Feedback submit error:', err);
+                showToast('Network error submitting feedback.');
+            } finally {
+                if (feedbackSubmitBtn) feedbackSubmitBtn.disabled = false;
+            }
+        });
+    }
+
+    // Admin Question Creator Form
+    if (adminNewQuestionForm) {
+        adminNewQuestionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = adminNewQuestionInput ? adminNewQuestionInput.value.trim() : '';
+            if (!question) return;
+
+            try {
+                if (adminPublishQuestionBtn) adminPublishQuestionBtn.disabled = true;
+                const res = await fetch('/api/admin/feedback/question', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    if (adminNewQuestionInput) adminNewQuestionInput.value = '';
+                    showToast('New question published for Glory! ✦');
+                    fetchAndRenderAdminFeedback();
+                } else {
+                    showToast('Failed to publish question.');
+                }
+            } catch (err) {
+                console.error('Error publishing question:', err);
+                showToast('Network error publishing question.');
+            } finally {
+                if (adminPublishQuestionBtn) adminPublishQuestionBtn.disabled = false;
+            }
+        });
+    }
+
+    // Admin Feedback & Ratings Engine (Yash)
+    function renderStarDisplay(rating) {
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            stars += (i <= rating) ? '★' : '☆';
+        }
+        return stars;
+    }
+
+    async function fetchAndRenderAdminFeedback() {
+        try {
+            const res = await fetch('/api/admin/feedback');
+            const data = await res.json();
+            if (data.status !== 'success') return;
+
+            const activeQ = data.active_question || {};
+            const stats = data.stats || { total_count: 0, average_rating: 0.0, breakdown: {} };
+            const responses = data.responses || [];
+
+            // Update Active Question
+            if (drawerActiveQuestionText) {
+                drawerActiveQuestionText.textContent = activeQ.question || 'How would you rate this experience?';
+            }
+            if (adminModalActiveQuestionText) {
+                adminModalActiveQuestionText.textContent = activeQ.question || 'How would you rate this experience?';
+            }
+
+            // Update Stats
+            const avgStr = `${stats.average_rating || 0.0} ★`;
+            const countNum = stats.total_count || 0;
+            const fiveStars = (stats.breakdown && stats.breakdown[5]) ? stats.breakdown[5] : 0;
+
+            if (drawerAvgRating) drawerAvgRating.textContent = avgStr;
+            if (drawerTotalFeedbackCount) drawerTotalFeedbackCount.textContent = countNum;
+            if (feedbackBadgeCount) feedbackBadgeCount.textContent = countNum;
+
+            if (adminModalAvgRating) adminModalAvgRating.textContent = avgStr;
+            if (adminModalTotalCount) adminModalTotalCount.textContent = countNum;
+            if (adminModalFiveStarCount) adminModalFiveStarCount.textContent = fiveStars;
+            if (adminFeedbackCountPill) {
+                adminFeedbackCountPill.textContent = `${countNum} REVIEW${countNum === 1 ? '' : 'S'}`;
+            }
+
+            // Render Drawer List
+            if (drawerFeedbackList) {
+                if (responses.length === 0) {
+                    drawerFeedbackList.innerHTML = '<div class="empty-replies">No feedback submissions received yet from Glory.</div>';
+                } else {
+                    drawerFeedbackList.innerHTML = '';
+                    responses.forEach(f => {
+                        const item = document.createElement('div');
+                        item.className = 'reply-item-card';
+                        const timeStr = formatTransmissionTime(f.created_at);
+                        const starStr = renderStarDisplay(f.rating);
+
+                        item.innerHTML = `
+                            <div class="reply-item-meta">
+                                <span class="reply-sender-name">★ ${escapeHtml(f.sender)} (${f.rating}/5)</span>
+                                <span class="reply-time">${escapeHtml(timeStr)}</span>
+                            </div>
+                            <div style="color: #ffd700; font-size: 0.95rem; margin-top: 3px; letter-spacing: 2px;">
+                                ${starStr}
+                            </div>
+                            <div style="font-family: var(--font-tech); font-size: 0.7rem; color: rgba(255,255,255,0.6); margin-top: 5px;">
+                                💬 ${escapeHtml(f.question_text || '')}
+                            </div>
+                            ${f.comment ? `<div style="font-family: var(--font-heading); font-size: 0.8rem; color: #fff; margin-top: 6px; font-style: italic;">"${escapeHtml(f.comment)}"</div>` : ''}
+                        `;
+                        drawerFeedbackList.appendChild(item);
+                    });
+                }
+            }
+
+            // Render Dedicated Admin Modal Container
+            if (adminFeedbackListContainer) {
+                if (responses.length === 0) {
+                    adminFeedbackListContainer.innerHTML = `
+                        <div class="empty-replies">
+                            <div class="radar-scan-box">
+                                <div class="radar-sweep"></div>
+                                <span class="radar-icon">★</span>
+                            </div>
+                            <p class="radar-text">NO VIEWER FEEDBACK RECORDED YET</p>
+                        </div>
+                    `;
+                } else {
+                    adminFeedbackListContainer.innerHTML = '';
+                    responses.forEach(f => {
+                        const card = document.createElement('div');
+                        card.className = 'feedback-review-card';
+                        const timeStr = formatLogDateTime(f.created_at);
+                        const starStr = renderStarDisplay(f.rating);
+
+                        card.innerHTML = `
+                            <div class="feedback-card-header">
+                                <div class="feedback-card-user">
+                                    <div class="log-user-avatar viewer">${(f.sender || 'G').charAt(0).toUpperCase()}</div>
+                                    <div>
+                                        <span class="log-username">${escapeHtml(f.sender)}</span>
+                                        <div class="log-meta-row" style="margin-top: 2px;">
+                                            <span>📅 ${escapeHtml(timeStr.dateStr)} • ⏰ ${escapeHtml(timeStr.timeStr)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="feedback-card-stars">${starStr} <span style="font-family: var(--font-tech); font-size: 0.8rem; color: #fbbf24; margin-left: 4px;">(${f.rating}/5)</span></div>
+                            </div>
+                            <div class="feedback-card-question">
+                                <strong>QUESTION:</strong> ${escapeHtml(f.question_text || '')}
+                            </div>
+                            ${f.comment ? `<div class="feedback-card-comment">"${escapeHtml(f.comment)}"</div>` : ''}
+                        `;
+                        adminFeedbackListContainer.appendChild(card);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching admin feedback:', err);
+        }
+    }
+
+    if (adminFeedbackBtn && adminFeedbackModal) {
+        adminFeedbackBtn.addEventListener('click', () => {
+            adminFeedbackModal.style.display = 'flex';
+            fetchAndRenderAdminFeedback();
+        });
+    }
+
+    if (adminFeedbackModalCloseBtn && adminFeedbackModal) {
+        adminFeedbackModalCloseBtn.addEventListener('click', () => {
+            adminFeedbackModal.style.display = 'none';
+        });
+    }
+
+    if (modalRefreshFeedbackBtn) {
+        modalRefreshFeedbackBtn.addEventListener('click', () => {
+            fetchAndRenderAdminFeedback();
+            showToast('Feedback ratings refreshed ✦');
+        });
+    }
+
+    if (refreshDrawerFeedbackBtn) {
+        refreshDrawerFeedbackBtn.addEventListener('click', () => {
+            fetchAndRenderAdminFeedback();
+            showToast('Feedback ratings refreshed ✦');
+        });
+    }
+
+    if (adminFeedbackModal) {
+        adminFeedbackModal.addEventListener('click', (e) => {
+            if (e.target === adminFeedbackModal) adminFeedbackModal.style.display = 'none';
+        });
+    }
+
+    // ==========================================================================
+    // 11. Viewport & Parallax Engine + Stardust Comet Trails
     // ==========================================================================
     let targetX = width / 2;
     let targetY = height / 2;
