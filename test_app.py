@@ -282,6 +282,27 @@ class TestMockedCloudEndpoints(unittest.TestCase):
 
 
 
+    @patch("main.reorder_chapter")
+    def test_reorder_chapter_endpoint(self, mock_reorder):
+        mock_reorder.return_value = [
+            {"step_index": 0, "title": "CHAPTER 01", "counter": "01 / 04"},
+            {"step_index": 1, "title": "CHAPTER 03", "counter": "02 / 04"},
+            {"step_index": 2, "title": "CHAPTER 02", "counter": "03 / 04"},
+            {"step_index": 3, "title": "CHAPTER 04", "counter": "04 / 04"},
+        ]
+        res = self.client.post("/api/admin/chapter/reorder", json={"from_index": 1, "to_index": 2})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["from_index"], 1)
+        self.assertEqual(data["to_index"], 2)
+        self.assertEqual(len(data["chapters"]), 4)
+        mock_reorder.assert_called_once_with(1, 2)
+
+    def test_reorder_chapter_invalid_index(self):
+        res = self.client.post("/api/admin/chapter/reorder", json={"from_index": -1, "to_index": 2})
+        self.assertEqual(res.status_code, 400)
+
     def test_diagnostic_endpoints(self):
         # Test HTML view
         res_html = self.client.get("/diagnostic", headers={"Accept": "text/html"})

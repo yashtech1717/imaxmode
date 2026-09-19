@@ -112,8 +112,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Studio Tab 2: Chapters & Media
     const chapterSelectorBar = document.getElementById('chapterSelectorBar');
+    const studioPrevPageBtn = document.getElementById('studioPrevPageBtn');
+    const studioNextPageBtn = document.getElementById('studioNextPageBtn');
+    const studioPageIndicator = document.getElementById('studioPageIndicator');
     const addChapterBtn = document.getElementById('addChapterBtn');
     const adminDeleteChapterBtn = document.getElementById('adminDeleteChapterBtn');
+    const reorderCurrentBadge = document.getElementById('reorderCurrentBadge');
+    const adminCardTargetPosition = document.getElementById('adminCardTargetPosition');
+    const btnMoveCardEarlier = document.getElementById('btnMoveCardEarlier');
+    const btnMoveCardLater = document.getElementById('btnMoveCardLater');
+    const btnApplyCardReorder = document.getElementById('btnApplyCardReorder');
     const adminChapterForm = document.getElementById('adminChapterForm');
     const adminCurrentStepIndex = document.getElementById('adminCurrentStepIndex');
     const adminCardBadge = document.getElementById('adminCardBadge');
@@ -712,6 +720,11 @@ document.addEventListener('DOMContentLoaded', () => {
             dot.addEventListener('click', () => {
                 if (idx !== currentStep && !isTransitioning) {
                     transitionToStep(idx);
+                } else if (idx === currentStep && !isTransitioning) {
+                    // If user clicks the 4th dot (last dot of window) when active, advance to next 4 dots!
+                    if (idx === endIdx - 1 && endIdx < totalMilestones) {
+                        transitionToStep(endIdx);
+                    }
                 }
             });
             dotsContainer.appendChild(dot);
@@ -735,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const startNum = String(startIdx + 1).padStart(2, '0');
                 const endNum = String(endIdx).padStart(2, '0');
                 const totalNum = String(totalMilestones).padStart(2, '0');
-                dotsPageIndicator.textContent = `${startNum} – ${endNum} / ${totalNum}`;
+                dotsPageIndicator.textContent = `PAGE ${currentPage + 1} OF ${totalPages} • ${startNum} – ${endNum} OF ${totalNum}`;
             }
         } else {
             if (dotsPrevBtn) dotsPrevBtn.style.display = 'none';
@@ -1352,11 +1365,22 @@ document.addEventListener('DOMContentLoaded', () => {
         loadChapterIntoStudio(0);
     }
 
+    const STUDIO_CHAPS_PER_PAGE = 4;
+    let studioChapterPage = 0;
+
     function renderStudioChapterButtons(activeIdx = 0) {
         if (!chapterSelectorBar) return;
         chapterSelectorBar.innerHTML = '';
 
-        MILESTONES.forEach((chap, idx) => {
+        const totalMilestones = MILESTONES.length;
+        if (totalMilestones === 0) return;
+
+        studioChapterPage = Math.floor(activeIdx / STUDIO_CHAPS_PER_PAGE);
+        const totalPages = Math.max(1, Math.ceil(totalMilestones / STUDIO_CHAPS_PER_PAGE));
+        const startIdx = studioChapterPage * STUDIO_CHAPS_PER_PAGE;
+        const endIdx = Math.min(startIdx + STUDIO_CHAPS_PER_PAGE, totalMilestones);
+
+        for (let idx = startIdx; idx < endIdx; idx++) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = `btn-chapter-sel ${idx === activeIdx ? 'active' : ''}`;
@@ -1366,10 +1390,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadChapterIntoStudio(idx);
             });
             chapterSelectorBar.appendChild(btn);
-        });
+        }
 
-        if (addChapterBtn) {
-            chapterSelectorBar.appendChild(addChapterBtn);
+        // Toggle Studio Pagination Controls
+        if (studioPrevPageBtn) {
+            studioPrevPageBtn.disabled = (studioChapterPage <= 0);
+            studioPrevPageBtn.style.opacity = studioChapterPage > 0 ? '1' : '0.25';
+            studioPrevPageBtn.style.pointerEvents = studioChapterPage > 0 ? 'auto' : 'none';
+        }
+        if (studioNextPageBtn) {
+            studioNextPageBtn.disabled = (studioChapterPage >= totalPages - 1);
+            studioNextPageBtn.style.opacity = studioChapterPage < totalPages - 1 ? '1' : '0.25';
+            studioNextPageBtn.style.pointerEvents = studioChapterPage < totalPages - 1 ? 'auto' : 'none';
+        }
+        if (studioPageIndicator) {
+            const startNum = String(startIdx + 1).padStart(2, '0');
+            const endNum = String(endIdx).padStart(2, '0');
+            const totalNum = String(totalMilestones).padStart(2, '0');
+            studioPageIndicator.textContent = `CARDS ${startNum} – ${endNum} OF ${totalNum} • PAGE ${studioChapterPage + 1} OF ${totalPages}`;
         }
     }
 
@@ -1449,12 +1487,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // Live visual preview
         updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
 
-        // Highlight active chapter button
-        if (chapterSelectorBar) {
+        // Highlight active chapter button (or re-render page if out of current window)
+        const activePage = Math.floor(stepIdx / STUDIO_CHAPS_PER_PAGE);
+        if (activePage !== studioChapterPage) {
+            renderStudioChapterButtons(stepIdx);
+        } else if (chapterSelectorBar) {
             const buttons = chapterSelectorBar.querySelectorAll('.btn-chapter-sel');
             buttons.forEach(btn => {
                 btn.classList.toggle('active', parseInt(btn.dataset.step, 10) === stepIdx);
             });
+        }
+
+        // Update Reorder Panel
+        if (reorderCurrentBadge) {
+            reorderCurrentBadge.textContent = `CURRENT: POSITION ${String(stepIdx + 1).padStart(2, '0')}`;
+        }
+        if (btnMoveCardEarlier) {
+            btnMoveCardEarlier.disabled = (stepIdx <= 0);
+        }
+        if (btnMoveCardLater) {
+            btnMoveCardLater.disabled = (stepIdx >= MILESTONES.length - 1);
+        }
+        if (adminCardTargetPosition) {
+            adminCardTargetPosition.innerHTML = '';
+            MILESTONES.forEach((chapItem, cIdx) => {
+                const opt = document.createElement('option');
+                opt.value = cIdx;
+                const posStr = String(cIdx + 1).padStart(2, '0');
+                const titleStr = (chapItem.title || 'UNTITLED').substring(0, 18);
+                opt.textContent = `Position ${posStr} (${titleStr})${cIdx === stepIdx ? ' [Current]' : ''}`;
+                adminCardTargetPosition.appendChild(opt);
+            });
+            adminCardTargetPosition.value = stepIdx;
         }
 
         // Delete button visibility safety check (always keep at least 1 card)
@@ -1462,6 +1526,100 @@ document.addEventListener('DOMContentLoaded', () => {
             adminDeleteChapterBtn.style.display = MILESTONES.length > 1 ? 'inline-flex' : 'none';
         }
     }
+
+    if (studioPrevPageBtn) {
+        studioPrevPageBtn.addEventListener('click', () => {
+            if (studioChapterPage > 0) {
+                const targetIdx = (studioChapterPage - 1) * STUDIO_CHAPS_PER_PAGE;
+                renderStudioChapterButtons(targetIdx);
+                loadChapterIntoStudio(targetIdx);
+            }
+        });
+    }
+
+    if (studioNextPageBtn) {
+        studioNextPageBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(MILESTONES.length / STUDIO_CHAPS_PER_PAGE);
+            if (studioChapterPage < totalPages - 1) {
+                const targetIdx = (studioChapterPage + 1) * STUDIO_CHAPS_PER_PAGE;
+                renderStudioChapterButtons(targetIdx);
+                loadChapterIntoStudio(targetIdx);
+            }
+        });
+    }
+
+    async function executeChapterReorder(fromIdx, toIdx) {
+        if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+        if (fromIdx >= MILESTONES.length || toIdx >= MILESTONES.length) return;
+
+        try {
+            if (btnApplyCardReorder) btnApplyCardReorder.disabled = true;
+            if (btnMoveCardEarlier) btnMoveCardEarlier.disabled = true;
+            if (btnMoveCardLater) btnMoveCardLater.disabled = true;
+
+            const res = await fetch('/api/admin/chapter/reorder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from_index: fromIdx, to_index: toIdx })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                MILESTONES = data.chapters;
+                totalSteps = MILESTONES.length;
+
+                // Sync Studio and Main Canvas
+                renderStudioChapterButtons(toIdx);
+                loadChapterIntoStudio(toIdx);
+                currentStep = toIdx;
+                applyTheme(currentStep);
+                updateCardContent(currentStep, false);
+                renderDots();
+
+                showToast(`✨ Card moved to Position ${String(toIdx + 1).padStart(2, '0')}!`);
+                playLaserWhoosh();
+            } else {
+                showToast(data.message || 'Failed to reorder card.');
+            }
+        } catch (err) {
+            console.error('Error reordering chapters:', err);
+            showToast('Network error reordering card.');
+        } finally {
+            if (btnApplyCardReorder) btnApplyCardReorder.disabled = false;
+            if (btnMoveCardEarlier) btnMoveCardEarlier.disabled = (toIdx <= 0);
+            if (btnMoveCardLater) btnMoveCardLater.disabled = (toIdx >= MILESTONES.length - 1);
+        }
+    }
+
+    if (btnMoveCardEarlier) {
+        btnMoveCardEarlier.addEventListener('click', () => {
+            const currentIdx = parseInt(adminCurrentStepIndex.value, 10);
+            if (currentIdx > 0) {
+                executeChapterReorder(currentIdx, currentIdx - 1);
+            }
+        });
+    }
+
+    if (btnMoveCardLater) {
+        btnMoveCardLater.addEventListener('click', () => {
+            const currentIdx = parseInt(adminCurrentStepIndex.value, 10);
+            if (currentIdx < MILESTONES.length - 1) {
+                executeChapterReorder(currentIdx, currentIdx + 1);
+            }
+        });
+    }
+
+    if (btnApplyCardReorder) {
+        btnApplyCardReorder.addEventListener('click', () => {
+            const currentIdx = parseInt(adminCurrentStepIndex.value, 10);
+            const targetIdx = parseInt(adminCardTargetPosition.value, 10);
+            if (currentIdx === targetIdx) {
+                showToast(`Card is already at Position ${String(targetIdx + 1).padStart(2, '0')}.`);
+                return;
+            }
+            executeChapterReorder(currentIdx, targetIdx);
+        });
+    }
+
 
     // Add New Chapter Card
     if (addChapterBtn) {

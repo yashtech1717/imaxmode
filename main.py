@@ -34,6 +34,7 @@ from db import (
     update_chapter,
     add_new_chapter,
     delete_chapter,
+    reorder_chapter,
     add_reply,
     get_replies,
     record_login,
@@ -111,6 +112,11 @@ class ChapterUpdate(BaseModel):
     media_type: Optional[str] = None
     media_url: Optional[str] = None
     media_name: Optional[str] = None
+
+class ChapterReorder(BaseModel):
+    from_index: int
+    to_index: int
+
 
 class ReplyCreate(BaseModel):
     sender: Optional[str] = "Glory"
@@ -254,6 +260,19 @@ def add_chapter_endpoint():
 def delete_chapter_endpoint(step_index: int):
     chapters = delete_chapter(step_index)
     return {"status": "success", "chapters": chapters}
+
+@app.post("/api/admin/chapter/reorder")
+def reorder_chapter_endpoint(payload: ChapterReorder):
+    if payload.from_index < 0 or payload.to_index < 0:
+        raise HTTPException(status_code=400, detail="Indices must be non-negative")
+    chapters = reorder_chapter(payload.from_index, payload.to_index)
+    return {
+        "status": "success",
+        "chapters": chapters,
+        "from_index": payload.from_index,
+        "to_index": payload.to_index
+    }
+
 
 @app.post("/api/admin/upload")
 async def upload_media_file(file: UploadFile = File(...)):

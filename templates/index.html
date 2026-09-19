@@ -11,11 +11,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
 
+    <!-- Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <!-- Modern Geometric Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=2.8">
 </head>
 <body class="theme-crimson">
     <!-- Cinematic VFX Particles Canvas (Floating Embers, Touch Trails, Fireworks & Supernova) -->
@@ -357,12 +362,46 @@
                 <!-- TAB 2: Dot Cards & Media Upload -->
                 <section class="tab-pane" id="tabChapters">
                     <div class="chapter-selector-wrapper">
+                        <button type="button" class="btn-chapter-nav" id="studioPrevPageBtn" title="Previous 4 cards">‹</button>
                         <div class="chapter-selector-bar" id="chapterSelectorBar">
-                            <!-- Populated dynamically via JS -->
+                            <!-- Populated dynamically via JS: 4 cards at a time -->
                         </div>
+                        <button type="button" class="btn-chapter-nav" id="studioNextPageBtn" title="Next 4 cards">›</button>
                         <button type="button" class="btn-add-chapter" id="addChapterBtn" title="Add a new milestone chapter card">
                             <span>+ ADD CARD</span>
                         </button>
+                    </div>
+                    <div class="studio-page-pill" id="studioPageIndicator">CARDS 01 – 04 / 04</div>
+
+                    <!-- Dedicated Chapter Position & Reorder Panel -->
+                    <div class="chapter-reorder-box">
+                        <div class="reorder-header">
+                            <div class="reorder-title">
+                                <span class="reorder-icon">⇄</span>
+                                <span>MODIFY CARD POSITION / ORDER</span>
+                            </div>
+                            <span class="reorder-status-badge" id="reorderCurrentBadge">CURRENT: POSITION 01</span>
+                        </div>
+                        <p class="reorder-desc">
+                            Change this chapter's sequence in the journey (e.g. move Card 04 to Position 07). All intermediate chapters will automatically re-index.
+                        </p>
+                        <div class="reorder-action-row">
+                            <button type="button" class="btn-reorder-step" id="btnMoveCardEarlier" title="Shift 1 position earlier">
+                                ◀ MOVE EARLIER
+                            </button>
+                            <div class="reorder-select-wrap">
+                                <label for="adminCardTargetPosition">MOVE TO POSITION:</label>
+                                <select id="adminCardTargetPosition" class="admin-reorder-select">
+                                    <!-- Populated dynamically via JS -->
+                                </select>
+                            </div>
+                            <button type="button" class="btn-reorder-apply" id="btnApplyCardReorder">
+                                <span>⇄ APPLY MOVE</span>
+                            </button>
+                            <button type="button" class="btn-reorder-step" id="btnMoveCardLater" title="Shift 1 position later">
+                                MOVE LATER ▶
+                            </button>
+                        </div>
                     </div>
 
                     <form id="adminChapterForm">
@@ -822,7 +861,7 @@
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=2.8"></script>
 </body>
 </html>
 

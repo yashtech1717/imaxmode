@@ -466,6 +466,68 @@ def delete_chapter(step_index: int) -> List[Dict[str, Any]]:
     return get_chapters()
 
 
+def reorder_chapter(from_index: int, to_index: int) -> List[Dict[str, Any]]:
+    """
+    Reorders a chapter from from_index to to_index.
+    Shifts intermediate chapters and updates counters and standard badges.
+    Safely executes an atomic two-step update in PostgreSQL to prevent
+    duplicate key collisions on the UNIQUE (step_index) constraint.
+    """
+    if not is_db_configured():
+        total = len(DEFAULT_CHAPTERS)
+        if total == 0:
+            return []
+        from_idx = max(0, min(from_index, total - 1))
+        to_idx = max(0, min(to_index, total - 1))
+        if from_idx != to_idx:
+            item = DEFAULT_CHAPTERS.pop(from_idx)
+            DEFAULT_CHAPTERS.insert(to_idx, item)
+            for new_idx, c in enumerate(DEFAULT_CHAPTERS):
+                c["step_index"] = new_idx
+                c["counter"] = f"{new_idx + 1:02d} / {total:02d}"
+                if c.get("badge", "").startswith("// CHAPTER "):
+                    c["badge"] = f"// CHAPTER {new_idx + 1:02d}"
+        return [dict(c) for c in DEFAULT_CHAPTERS]
+
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("SELECT * FROM chapters ORDER BY step_index ASC;")
+        rows = cursor.fetchall()
+        total = len(rows)
+        if total == 0:
+            return []
+
+        from_idx = max(0, min(from_index, total - 1))
+        to_idx = max(0, min(to_index, total - 1))
+
+        if from_idx == to_idx:
+            return get_chapters()
+
+        chap_list = [dict(r) for r in rows]
+        moved_chap = chap_list.pop(from_idx)
+        chap_list.insert(to_idx, moved_chap)
+
+        # Step 1: Evacuate step_index to negative values to avoid UNIQUE constraint violation
+        cursor.execute("UPDATE chapters SET step_index = -1 - id;")
+
+        # Step 2: Assign new sequential step_index (0..N-1) and update counter and badge
+        for new_idx, chap in enumerate(chap_list):
+            new_counter = f"{new_idx + 1:02d} / {total:02d}"
+            curr_badge = chap.get("badge", "") or ""
+            if curr_badge.startswith("// CHAPTER "):
+                new_badge = f"// CHAPTER {new_idx + 1:02d}"
+            else:
+                new_badge = curr_badge
+
+            cursor.execute("""
+                UPDATE chapters
+                SET step_index = %s, counter = %s, badge = %s
+                WHERE id = %s;
+            """, (new_idx, new_counter, new_badge, chap["id"]))
+
+    return get_chapters()
+
+
+
 # --- Replies Operations ---
 def add_reply(sender: str, message: str, chapter_index: Optional[int] = None, chapter_title: Optional[str] = None) -> Dict[str, Any]:
     with get_db_cursor(commit=True) as cursor:
