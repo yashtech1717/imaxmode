@@ -178,9 +178,19 @@ def init_db():
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS login_logs (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                role TEXT NOT NULL,
+                ip_address TEXT DEFAULT '',
+                user_agent TEXT DEFAULT '',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE INDEX IF NOT EXISTS idx_chapters_step_index ON chapters(step_index ASC);
             CREATE INDEX IF NOT EXISTS idx_replies_chapter_index ON replies(chapter_index);
             CREATE INDEX IF NOT EXISTS idx_replies_created_at ON replies(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC);
         """)
 
         # Seed site_config if empty
@@ -500,3 +510,39 @@ def delete_text(text_id: int) -> bool:
     with get_db_cursor(commit=True) as cursor:
         cursor.execute("DELETE FROM texts WHERE id = %s;", (text_id,))
         return cursor.rowcount > 0
+
+
+# --- Login Logs Operations (Audit Activity) ---
+def record_login(username: str, role: str, ip_address: str = "", user_agent: str = "") -> bool:
+    """Safely logs successful user authentications to Supabase PostgreSQL."""
+    if not is_db_configured():
+        return False
+    try:
+        with get_db_cursor(commit=True) as cursor:
+            cursor.execute("""
+                INSERT INTO login_logs (username, role, ip_address, user_agent)
+                VALUES (%s, %s, %s, %s);
+            """, (username.strip(), role.strip(), ip_address.strip() if ip_address else "", user_agent.strip() if user_agent else ""))
+            return True
+    except Exception as err:
+        logger.warning("Could not record login log in PostgreSQL: %s", err)
+        return False
+
+
+def get_login_logs(limit: int = 100) -> List[Dict[str, Any]]:
+    """Fetches recent login sessions ordered by newest first."""
+    if not is_db_configured():
+        return []
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, username, role, ip_address, user_agent, created_at
+                FROM login_logs
+                ORDER BY id DESC
+                LIMIT %s;
+            """, (limit,))
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows]
+    except Exception as err:
+        logger.warning("Could not read login logs from PostgreSQL: %s", err)
+        return []

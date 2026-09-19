@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const chapterCard = document.getElementById('chapterCard');
     const backdropDots = document.getElementById('backdropDots');
     const dotsContainer = document.getElementById('dotsContainer');
+    const dotsPrevBtn = document.getElementById('dotsPrevBtn');
+    const dotsNextBtn = document.getElementById('dotsNextBtn');
+    const dotsPageIndicator = document.getElementById('dotsPageIndicator');
     const trackLineActive = document.getElementById('trackLineActive');
     const trackSparkRunner = document.getElementById('trackSparkRunner');
     let bDots = document.querySelectorAll('.b-dot');
@@ -73,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userChipName = document.getElementById('userChipName');
     const adminStudioBtn = document.getElementById('adminStudioBtn');
     const adminViewRepliesBtn = document.getElementById('adminViewRepliesBtn');
+    const adminLoginLogsBtn = document.getElementById('adminLoginLogsBtn');
     const headerRepliesCount = document.getElementById('headerRepliesCount');
     const gloryReplyBtn = document.getElementById('gloryReplyBtn');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -93,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const studioTabBtns = document.querySelectorAll('.studio-tab-btn');
     const tabPanes = document.querySelectorAll('.tab-pane');
     const repliesBadgeCount = document.getElementById('repliesBadgeCount');
+    const logsBadgeCount = document.getElementById('logsBadgeCount');
 
     // Studio Tab 1: Texts
     const adminTextsForm = document.getElementById('adminTextsForm');
@@ -131,12 +136,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminRepliesList = document.getElementById('adminRepliesList');
     const refreshRepliesBtn = document.getElementById('refreshRepliesBtn');
 
+    // Studio Tab 4: Login Logs
+    const drawerLoginLogsList = document.getElementById('drawerLoginLogsList');
+    const refreshDrawerLogsBtn = document.getElementById('refreshDrawerLogsBtn');
+
     // Dedicated Admin Replies Modal Elements
     const adminRepliesModal = document.getElementById('adminRepliesModal');
     const adminRepliesModalCloseBtn = document.getElementById('adminRepliesModalCloseBtn');
     const modalRefreshRepliesBtn = document.getElementById('modalRefreshRepliesBtn');
     const richRepliesContainer = document.getElementById('richRepliesContainer');
     const repliesCountPill = document.getElementById('repliesCountPill');
+
+    // Dedicated Admin Login Logs Modal Elements
+    const adminLogsModal = document.getElementById('adminLogsModal');
+    const adminLogsModalCloseBtn = document.getElementById('adminLogsModalCloseBtn');
+    const modalRefreshLogsBtn = document.getElementById('modalRefreshLogsBtn');
+    const loginLogsContainer = document.getElementById('loginLogsContainer');
+    const logsCountPill = document.getElementById('logsCountPill');
 
     // Glory Reply Modal Elements
     const replyModal = document.getElementById('replyModal');
@@ -626,12 +642,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const DOTS_PER_PAGE = 4;
+
     function renderDots() {
         if (!dotsContainer) return;
         dotsContainer.innerHTML = '';
-        MILESTONES.forEach((m, idx) => {
+        const totalMilestones = MILESTONES.length;
+        if (totalMilestones === 0) return;
+
+        const totalPages = Math.ceil(totalMilestones / DOTS_PER_PAGE);
+        const currentPage = Math.floor(currentStep / DOTS_PER_PAGE);
+        const startIdx = currentPage * DOTS_PER_PAGE;
+        const endIdx = Math.min(startIdx + DOTS_PER_PAGE, totalMilestones);
+
+        for (let idx = startIdx; idx < endIdx; idx++) {
             const dot = document.createElement('span');
-            dot.className = `b-dot ${idx === currentStep ? 'active' : ''}`;
+            dot.className = `b-dot ${idx === currentStep ? 'active' : (idx < currentStep ? 'completed' : '')}`;
             dot.setAttribute('data-step', idx);
             dot.innerHTML = `
                 <span class="b-dot-num">${String(idx + 1).padStart(2, '0')}</span>
@@ -643,8 +669,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             dotsContainer.appendChild(dot);
-        });
+        }
         bDots = document.querySelectorAll('.b-dot');
+
+        // Toggle pagination navigation and page indicator
+        if (totalMilestones > DOTS_PER_PAGE) {
+            if (dotsPrevBtn) {
+                dotsPrevBtn.style.display = 'inline-flex';
+                dotsPrevBtn.style.opacity = currentPage > 0 ? '1' : '0.25';
+                dotsPrevBtn.style.pointerEvents = currentPage > 0 ? 'auto' : 'none';
+            }
+            if (dotsNextBtn) {
+                dotsNextBtn.style.display = 'inline-flex';
+                dotsNextBtn.style.opacity = currentPage < totalPages - 1 ? '1' : '0.25';
+                dotsNextBtn.style.pointerEvents = currentPage < totalPages - 1 ? 'auto' : 'none';
+            }
+            if (dotsPageIndicator) {
+                dotsPageIndicator.style.display = 'block';
+                const startNum = String(startIdx + 1).padStart(2, '0');
+                const endNum = String(endIdx).padStart(2, '0');
+                const totalNum = String(totalMilestones).padStart(2, '0');
+                dotsPageIndicator.textContent = `${startNum} – ${endNum} / ${totalNum}`;
+            }
+        } else {
+            if (dotsPrevBtn) dotsPrevBtn.style.display = 'none';
+            if (dotsNextBtn) dotsNextBtn.style.display = 'none';
+            if (dotsPageIndicator) dotsPageIndicator.style.display = 'none';
+        }
     }
 
     function checkAuth() {
@@ -657,12 +708,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentRole === 'admin') {
                 if (adminStudioBtn) adminStudioBtn.style.display = 'inline-flex';
                 if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'inline-flex';
+                if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'inline-flex';
                 if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
                 if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
                 fetchAndRenderRichReplies();
+                fetchAndRenderLoginLogs();
             } else {
                 if (adminStudioBtn) adminStudioBtn.style.display = 'none';
                 if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
+                if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
                 if (gloryReplyBtn) gloryReplyBtn.style.display = 'inline-flex';
                 if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'flex';
             }
@@ -674,6 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authControls) authControls.style.display = 'none';
             if (adminStudioBtn) adminStudioBtn.style.display = 'none';
             if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
+            if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
             if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
             if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
         }
@@ -709,13 +764,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (currentRole === 'admin') {
                         if (adminStudioBtn) adminStudioBtn.style.display = 'inline-flex';
                         if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'inline-flex';
+                        if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'inline-flex';
                         if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
                         if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
                         fetchAndRenderRichReplies();
+                        fetchAndRenderLoginLogs();
                         showToast(`Welcome back, Yash! Admin studio unlocked ✦`);
                     } else {
                         if (adminStudioBtn) adminStudioBtn.style.display = 'none';
                         if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
+                        if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
                         if (gloryReplyBtn) gloryReplyBtn.style.display = 'inline-flex';
                         if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'flex';
                         showToast(`Welcome, Glory! Cinematic portal unlocked ✦`);
@@ -762,6 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authControls) authControls.style.display = 'none';
             if (adminStudioBtn) adminStudioBtn.style.display = 'none';
             if (adminViewRepliesBtn) adminViewRepliesBtn.style.display = 'none';
+            if (adminLoginLogsBtn) adminLoginLogsBtn.style.display = 'none';
             if (gloryReplyBtn) gloryReplyBtn.style.display = 'none';
             if (cardReplyTriggerWrap) cardReplyTriggerWrap.style.display = 'none';
             if (loginPassword) {
@@ -857,19 +916,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initDotsPosition(stepIndex) {
-        bDots = document.querySelectorAll('.b-dot');
+        if (!MILESTONES || MILESTONES.length === 0) return;
+        const currentPage = Math.floor(stepIndex / DOTS_PER_PAGE);
+        const currentRenderedFirst = bDots && bDots[0] ? parseInt(bDots[0].getAttribute('data-step'), 10) : 0;
+        const currentRenderedPage = Math.floor(currentRenderedFirst / DOTS_PER_PAGE);
+
+        if (currentRenderedPage !== currentPage) {
+            renderDots();
+        } else {
+            bDots = document.querySelectorAll('.b-dot');
+        }
+
         if (!bDots || bDots.length === 0) return;
 
-        bDots.forEach((dot, idx) => {
+        const startIdx = currentPage * DOTS_PER_PAGE;
+        bDots.forEach((dot, rIdx) => {
+            const realIdx = startIdx + rIdx;
             dot.classList.remove('active', 'completed', 'burst');
-            if (idx === stepIndex) {
+            if (realIdx === stepIndex) {
                 dot.classList.add('active');
-            } else if (idx < stepIndex) {
+            } else if (realIdx < stepIndex) {
                 dot.classList.add('completed');
             }
         });
 
-        const activeDot = bDots[stepIndex];
+        const relativeIndex = stepIndex - startIdx;
+        const activeDot = bDots[relativeIndex] || bDots[0];
         const firstDot = bDots[0];
         if (activeDot && firstDot && trackLineActive && trackSparkRunner && backdropDots) {
             const trackRect = backdropDots.getBoundingClientRect();
@@ -1086,8 +1158,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function animateDotChange(targetIndex, onComplete) {
+        const currentRenderedFirst = bDots && bDots[0] ? parseInt(bDots[0].getAttribute('data-step'), 10) : 0;
+        const currentWindowPage = Math.floor(currentRenderedFirst / DOTS_PER_PAGE);
+        const targetWindowPage = Math.floor(targetIndex / DOTS_PER_PAGE);
+
+        if (targetWindowPage !== currentWindowPage) {
+            currentStep = targetIndex;
+            renderDots();
+            if (dotsContainer) {
+                dotsContainer.classList.add('dots-page-transition');
+                setTimeout(() => dotsContainer.classList.remove('dots-page-transition'), 360);
+            }
+        }
+
         bDots = document.querySelectorAll('.b-dot');
-        const targetDot = bDots[targetIndex];
+        const startIdx = targetWindowPage * DOTS_PER_PAGE;
+        const relativeIndex = targetIndex - startIdx;
+        const targetDot = bDots[relativeIndex] || bDots[0];
         const firstDot = bDots[0];
 
         if (!targetDot || !firstDot || !backdropDots) {
@@ -1123,11 +1210,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             playImpactThud(targetIndex === totalSteps - 1);
 
-            bDots.forEach((dot, idx) => {
+            bDots.forEach((dot, rIdx) => {
+                const realIdx = startIdx + rIdx;
                 dot.classList.remove('active', 'burst');
-                if (idx < targetIndex) {
+                if (realIdx < targetIndex) {
                     dot.classList.add('completed');
-                } else if (idx === targetIndex) {
+                } else if (realIdx === targetIndex) {
                     dot.classList.remove('completed');
                     dot.classList.add('active', 'burst');
                 } else {
@@ -1156,6 +1244,29 @@ document.addEventListener('DOMContentLoaded', () => {
         prevStepBtn.addEventListener('click', () => {
             if (currentStep > 0) {
                 transitionToStep(currentStep - 1);
+            }
+        });
+    }
+
+    if (dotsPrevBtn) {
+        dotsPrevBtn.addEventListener('click', () => {
+            if (isTransitioning) return;
+            const currentWindowPage = Math.floor(currentStep / DOTS_PER_PAGE);
+            if (currentWindowPage > 0) {
+                const targetStep = (currentWindowPage - 1) * DOTS_PER_PAGE;
+                transitionToStep(targetStep);
+            }
+        });
+    }
+
+    if (dotsNextBtn) {
+        dotsNextBtn.addEventListener('click', () => {
+            if (isTransitioning) return;
+            const currentWindowPage = Math.floor(currentStep / DOTS_PER_PAGE);
+            const totalPages = Math.ceil(MILESTONES.length / DOTS_PER_PAGE);
+            if (currentWindowPage < totalPages - 1) {
+                const targetStep = (currentWindowPage + 1) * DOTS_PER_PAGE;
+                transitionToStep(targetStep);
             }
         });
     }
@@ -1553,6 +1664,12 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             const pane = document.getElementById(targetTab);
             if (pane) pane.classList.add('active');
+
+            if (targetTab === 'tabLogs') {
+                fetchAndRenderLoginLogs();
+            } else if (targetTab === 'tabReplies') {
+                fetchAndRenderRichReplies();
+            }
         });
     });
 
@@ -1785,6 +1902,170 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adminRepliesModal) {
         adminRepliesModal.addEventListener('click', (e) => {
             if (e.target === adminRepliesModal) adminRepliesModal.style.display = 'none';
+        });
+    }
+
+    // ==========================================================================
+    // 9.5 Dedicated Admin Login Activity & Audit Engine (Yash)
+    // ==========================================================================
+    function formatLogDateTime(isoStr) {
+        if (!isoStr) return { dateStr: 'Unknown Date', timeStr: 'Unknown Time', relativeStr: '' };
+        try {
+            const d = new Date(isoStr);
+            if (isNaN(d.getTime())) return { dateStr: isoStr, timeStr: '', relativeStr: '' };
+            const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const now = new Date();
+            const diffSec = Math.floor((now - d) / 1000);
+            let relativeStr = 'Just now';
+            if (diffSec >= 60 && diffSec < 3600) relativeStr = `${Math.floor(diffSec / 60)}m ago`;
+            else if (diffSec >= 3600 && diffSec < 86400) relativeStr = `${Math.floor(diffSec / 3600)}h ago`;
+            else if (diffSec >= 86400) relativeStr = `${Math.floor(diffSec / 86400)}d ago`;
+            return { dateStr, timeStr, relativeStr };
+        } catch (e) {
+            return { dateStr: isoStr, timeStr: '', relativeStr: '' };
+        }
+    }
+
+    function parseDeviceSummary(ua) {
+        if (!ua) return 'Web Client';
+        if (/iphone/i.test(ua)) return 'Apple iPhone';
+        if (/ipad/i.test(ua)) return 'Apple iPad';
+        if (/android/i.test(ua)) return 'Android Device';
+        if (/macintosh|mac os x/i.test(ua)) return 'macOS Workstation';
+        if (/windows/i.test(ua)) return 'Windows PC';
+        if (/linux/i.test(ua)) return 'Linux System';
+        return 'Web Browser';
+    }
+
+    async function fetchAndRenderLoginLogs() {
+        try {
+            const res = await fetch('/api/admin/login-logs');
+            const data = await res.json();
+            if (data.status !== 'success') return;
+            const logs = data.data || [];
+
+            // Update badge counters
+            if (logsBadgeCount) logsBadgeCount.textContent = logs.length;
+            if (logsCountPill) {
+                logsCountPill.textContent = `${logs.length} SESSION${logs.length === 1 ? '' : 'S'}`;
+            }
+
+            // Render Studio Drawer simple list
+            if (drawerLoginLogsList) {
+                if (logs.length === 0) {
+                    drawerLoginLogsList.innerHTML = '<div class="empty-replies">No login sessions recorded yet.</div>';
+                } else {
+                    drawerLoginLogsList.innerHTML = '';
+                    logs.forEach(log => {
+                        const item = document.createElement('div');
+                        item.className = 'reply-item-card';
+                        const { dateStr, timeStr, relativeStr } = formatLogDateTime(log.created_at);
+                        const device = parseDeviceSummary(log.user_agent);
+                        const ip = log.ip_address || '127.0.0.1';
+                        const roleClass = (log.role || 'viewer').toLowerCase() === 'admin' ? 'admin' : 'viewer';
+
+                        item.innerHTML = `
+                            <div class="reply-item-meta">
+                                <span class="reply-sender-name">🔒 ${escapeHtml(log.username)}</span>
+                                <span class="log-role-pill ${roleClass}">${escapeHtml((log.role || 'viewer').toUpperCase())}</span>
+                                <span class="reply-time" style="margin-left: auto;">${escapeHtml(relativeStr)}</span>
+                            </div>
+                            <div style="font-family: var(--font-tech); font-size: 0.72rem; color: rgba(255, 255, 255, 0.75); margin-top: 6px;">
+                                📅 ${escapeHtml(dateStr)} • ⏰ ${escapeHtml(timeStr)}
+                            </div>
+                            <div style="font-family: var(--font-tech); font-size: 0.65rem; color: #38bdf8; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                <span>🌐 ${escapeHtml(ip)}</span>
+                                <span>💻 ${escapeHtml(device)}</span>
+                            </div>
+                        `;
+                        drawerLoginLogsList.appendChild(item);
+                    });
+                }
+            }
+
+            // Render Dedicated Cinematic Modal
+            if (loginLogsContainer) {
+                if (logs.length === 0) {
+                    loginLogsContainer.innerHTML = `
+                        <div class="empty-replies">
+                            <div class="radar-scan-box">
+                                <div class="radar-sweep"></div>
+                                <span class="radar-icon">🔒</span>
+                            </div>
+                            <p class="radar-text">NO LOGIN SESSIONS RECORDED YET</p>
+                        </div>
+                    `;
+                } else {
+                    loginLogsContainer.innerHTML = '';
+                    logs.forEach(log => {
+                        const card = document.createElement('div');
+                        card.className = 'log-audit-card';
+                        const roleClass = (log.role || 'viewer').toLowerCase() === 'admin' ? 'admin' : 'viewer';
+                        const avatarInitial = (log.username || '?').charAt(0).toUpperCase();
+                        const { dateStr, timeStr, relativeStr } = formatLogDateTime(log.created_at);
+                        const device = parseDeviceSummary(log.user_agent);
+                        const ip = log.ip_address || '127.0.0.1';
+
+                        card.innerHTML = `
+                            <div class="log-user-info">
+                                <div class="log-user-avatar ${roleClass}">${avatarInitial}</div>
+                                <div class="log-user-details">
+                                    <div class="log-name-row">
+                                        <span class="log-username">${escapeHtml(log.username)}</span>
+                                        <span class="log-role-pill ${roleClass}">${escapeHtml((log.role || 'viewer').toUpperCase())}</span>
+                                    </div>
+                                    <div class="log-meta-row">
+                                        <span class="log-time-exact">📅 ${escapeHtml(dateStr)} • ⏰ ${escapeHtml(timeStr)} (${escapeHtml(relativeStr)})</span>
+                                        <span class="log-ip-pill">🌐 ${escapeHtml(ip)}</span>
+                                        <span class="log-agent-pill" title="${escapeHtml(log.user_agent || '')}">💻 ${escapeHtml(device)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="log-status-badge">
+                                <span class="log-status-dot"></span>
+                                <span>AUTHENTICATED</span>
+                            </div>
+                        `;
+                        loginLogsContainer.appendChild(card);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching login logs:', err);
+        }
+    }
+
+    if (refreshDrawerLogsBtn) {
+        refreshDrawerLogsBtn.addEventListener('click', () => {
+            fetchAndRenderLoginLogs();
+            showToast('Access logs refreshed ✦');
+        });
+    }
+
+    if (adminLoginLogsBtn && adminLogsModal) {
+        adminLoginLogsBtn.addEventListener('click', () => {
+            adminLogsModal.style.display = 'flex';
+            fetchAndRenderLoginLogs();
+        });
+    }
+
+    if (adminLogsModalCloseBtn && adminLogsModal) {
+        adminLogsModalCloseBtn.addEventListener('click', () => {
+            adminLogsModal.style.display = 'none';
+        });
+    }
+
+    if (modalRefreshLogsBtn) {
+        modalRefreshLogsBtn.addEventListener('click', () => {
+            fetchAndRenderLoginLogs();
+            showToast('Access logs refreshed ✦');
+        });
+    }
+
+    if (adminLogsModal) {
+        adminLogsModal.addEventListener('click', (e) => {
+            if (e.target === adminLogsModal) adminLogsModal.style.display = 'none';
         });
     }
 

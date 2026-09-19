@@ -91,6 +91,17 @@ CREATE TABLE IF NOT EXISTS texts (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 5. Login Activity & Security Audit Logs Table
+CREATE TABLE IF NOT EXISTS login_logs (
+    id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL,
+    role TEXT NOT NULL,
+    ip_address TEXT DEFAULT '',
+    user_agent TEXT DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC);
+
 -- ==============================================================================
 -- SUPABASE STORAGE BUCKET CONFIGURATION
 -- ==============================================================================

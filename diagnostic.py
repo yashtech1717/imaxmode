@@ -213,7 +213,7 @@ def run_supabase_diagnostic() -> dict:
     # ---------------------------------------------------------
     # 6. Test DATABASE SCHEMA (Required Tables)
     # ---------------------------------------------------------
-    required_tables = ["site_config", "chapters", "replies", "texts"]
+    required_tables = ["site_config", "chapters", "replies", "texts", "login_logs"]
     found_tables = []
     missing_tables = []
 

@@ -51,6 +51,10 @@
                 <span class="pulse-spark">📬</span>
                 <span>REPLIES (<span id="headerRepliesCount">0</span>)</span>
             </button>
+            <button class="cinema-control-btn btn-login-logs" id="adminLoginLogsBtn" style="display: none;" title="View Verified Login Activity & Timestamps">
+                <span class="pulse-spark">🔒</span>
+                <span>LOGINS</span>
+            </button>
             <button class="cinema-control-btn btn-reply" id="gloryReplyBtn" style="display: none;" title="Reply to Yash">
                 <span class="pulse-spark">💌</span>
                 <span>REPLY TO YASH</span>
@@ -102,31 +106,37 @@
 
             <!-- Chapter Journey Stage (With Cinematic Staged Animation) -->
             <div class="chapter-stage" id="chapterStage">
-                <!-- Staged Progress Dots with Dynamic Laser Runner Spark -->
-                <div class="backdrop-dots-track" id="backdropDots">
-                    <div class="track-line-bg"></div>
-                    <div class="track-line-active" id="trackLineActive"></div>
-                    <div class="track-spark-runner" id="trackSparkRunner"></div>
+                <!-- Staged Progress Dots (4-Dot Windowed Track with Dynamic Laser Runner Spark) -->
+                <div class="backdrop-dots-track-wrap">
+                    <button type="button" class="dots-page-nav-btn prev-btn" id="dotsPrevBtn" style="display: none;" title="Previous 4 cards">‹</button>
+                    <div class="backdrop-dots-track" id="backdropDots">
+                        <div class="track-line-bg"></div>
+                        <div class="track-line-active" id="trackLineActive"></div>
+                        <div class="track-spark-runner" id="trackSparkRunner"></div>
 
-                    <div class="b-dots-container" id="dotsContainer">
-                        <span class="b-dot active" data-step="0">
-                            <span class="b-dot-num">01</span>
-                            <span class="b-dot-ripple"></span>
-                        </span>
-                        <span class="b-dot" data-step="1">
-                            <span class="b-dot-num">02</span>
-                            <span class="b-dot-ripple"></span>
-                        </span>
-                        <span class="b-dot" data-step="2">
-                            <span class="b-dot-num">03</span>
-                            <span class="b-dot-ripple"></span>
-                        </span>
-                        <span class="b-dot" data-step="3">
-                            <span class="b-dot-num">04</span>
-                            <span class="b-dot-ripple"></span>
-                        </span>
+                        <div class="b-dots-container" id="dotsContainer">
+                            <!-- Populated dynamically via JS 4-dot window -->
+                            <span class="b-dot active" data-step="0">
+                                <span class="b-dot-num">01</span>
+                                <span class="b-dot-ripple"></span>
+                            </span>
+                            <span class="b-dot" data-step="1">
+                                <span class="b-dot-num">02</span>
+                                <span class="b-dot-ripple"></span>
+                            </span>
+                            <span class="b-dot" data-step="2">
+                                <span class="b-dot-num">03</span>
+                                <span class="b-dot-ripple"></span>
+                            </span>
+                            <span class="b-dot" data-step="3">
+                                <span class="b-dot-num">04</span>
+                                <span class="b-dot-ripple"></span>
+                            </span>
+                        </div>
                     </div>
+                    <button type="button" class="dots-page-nav-btn next-btn" id="dotsNextBtn" style="display: none;" title="Next 4 cards">›</button>
                 </div>
+                <div class="dots-page-pill" id="dotsPageIndicator" style="display: none;">01 – 04 / 04</div>
 
                 <!-- Pure Cinematic Chapter Card with Holographic Laser Sheen -->
                 <div class="chapter-card-outer" id="cardOuter">
@@ -292,6 +302,10 @@
                     <span>Glory's Replies</span>
                     <span class="tab-badge-counter" id="repliesBadgeCount">0</span>
                 </button>
+                <button class="studio-tab-btn" data-tab="tabLogs">
+                    <span>Login History</span>
+                    <span class="tab-badge-counter" id="logsBadgeCount">0</span>
+                </button>
             </nav>
 
             <div class="studio-tab-content">
@@ -436,6 +450,17 @@
                         <div class="empty-replies">Loading messages...</div>
                     </div>
                 </section>
+
+                <!-- TAB 4: Login Activity & History -->
+                <section class="tab-pane" id="tabLogs">
+                    <div class="replies-header">
+                        <span class="cyber-badge">// ACCESS LOGS</span>
+                        <button type="button" class="btn-refresh-replies" id="refreshDrawerLogsBtn">↺ REFRESH</button>
+                    </div>
+                    <div class="replies-list" id="drawerLoginLogsList">
+                        <div class="empty-replies">Loading login logs...</div>
+                    </div>
+                </section>
             </div>
         </aside>
     </div>
@@ -558,6 +583,45 @@
                         <span class="radar-icon">📡</span>
                     </div>
                     <p class="radar-text">INITIALIZING INBOX SCAN...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 6. ADMIN DEDICATED LOGIN ACTIVITY & AUDIT VIEWER MODAL                     -->
+    <!-- ========================================================================== -->
+    <div class="modal-backdrop logs-modal-backdrop" id="adminLogsModal" style="display: none;">
+        <div class="modal-box logs-viewer-box">
+            <div class="portal-card-sheen"></div>
+            <div class="modal-header logs-viewer-header">
+                <div class="media-title-group">
+                    <div class="cyber-accent-bar" style="margin-bottom: 6px;">
+                        <span class="theme-line red-line"></span>
+                        <span class="cyber-badge">// SYSTEM SECURITY AUDIT // ACCESS HISTORY</span>
+                        <span class="theme-line red-line"></span>
+                    </div>
+                    <div class="replies-title-row">
+                        <h3 class="media-title-text">🔒 CALLSIGN LOGIN SESSIONS</h3>
+                        <span class="logs-count-pill" id="logsCountPill">0 SESSIONS</span>
+                    </div>
+                </div>
+                <div class="replies-header-actions">
+                    <button type="button" class="btn-refresh-replies" id="modalRefreshLogsBtn" title="Refresh verified login history">
+                        <span class="btn-spin-icon">↺</span>
+                        <span>REFRESH</span>
+                    </button>
+                    <button class="btn-modal-close" id="adminLogsModalCloseBtn">✕</button>
+                </div>
+            </div>
+
+            <div class="login-logs-container" id="loginLogsContainer">
+                <div class="empty-replies">
+                    <div class="radar-scan-box">
+                        <div class="radar-sweep"></div>
+                        <span class="radar-icon">📡</span>
+                    </div>
+                    <p class="radar-text">SCANNING LOGIN SESSIONS...</p>
                 </div>
             </div>
         </div>

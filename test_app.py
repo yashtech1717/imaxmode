@@ -177,6 +177,41 @@ class TestMockedCloudEndpoints(unittest.TestCase):
         self.assertEqual(data["status"], "success")
         self.assertEqual(len(data["data"]), 1)
 
+    @patch("main.get_login_logs")
+    def test_admin_fetch_login_logs(self, mock_get_login_logs):
+        mock_get_login_logs.return_value = [
+            {
+                "id": 1,
+                "username": "yash",
+                "role": "admin",
+                "ip_address": "127.0.0.1",
+                "user_agent": "Mozilla/5.0",
+                "created_at": "2026-09-19T07:00:00"
+            }
+        ]
+        res = self.client.get("/api/admin/login-logs")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(len(data["data"]), 1)
+        self.assertEqual(data["data"][0]["username"], "yash")
+        self.assertEqual(data["data"][0]["role"], "admin")
+
+    @patch("main.record_login")
+    def test_login_records_audit_log(self, mock_record_login):
+        res = self.client.post(
+            "/api/login",
+            json={"username": "yash", "password": "yashadmin17"},
+            headers={"User-Agent": "TestBrowser/1.0", "X-Forwarded-For": "203.0.113.195"}
+        )
+        self.assertEqual(res.status_code, 200)
+        mock_record_login.assert_called_once_with(
+            "yash",
+            "admin",
+            "203.0.113.195",
+            "TestBrowser/1.0"
+        )
+
 
     def test_diagnostic_endpoints(self):
         # Test HTML view

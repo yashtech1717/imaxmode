@@ -36,6 +36,8 @@ from db import (
     delete_chapter,
     add_reply,
     get_replies,
+    record_login,
+    get_login_logs,
     get_all_texts,
     add_text,
     delete_text
@@ -163,12 +165,20 @@ def home(request: Request):
 
 # --- Authentication Endpoint ---
 @app.post("/api/login")
-def login(payload: LoginRequest):
+def login(payload: LoginRequest, request: Request):
     user = payload.username.strip()
     pwd = payload.password.strip()
 
+    # Client IP & User Agent (cloud proxy safe)
+    client_ip = request.client.host if request.client else "unknown"
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+    user_agent = request.headers.get("user-agent", "unknown")
+
     # Admin Login (Yash)
     if user.lower() == "yash" and pwd == "yashadmin17":
+        record_login("yash", "admin", client_ip, user_agent)
         return {
             "status": "success",
             "role": "admin",
@@ -178,6 +188,7 @@ def login(payload: LoginRequest):
 
     # Viewer Login (Glory / glory and lory / Lory)
     if user.lower() == "glory" and pwd.lower() == "lory":
+        record_login("Glory", "viewer", client_ip, user_agent)
         return {
             "status": "success",
             "role": "viewer",
@@ -186,6 +197,10 @@ def login(payload: LoginRequest):
         }
 
     raise HTTPException(status_code=401, detail="Invalid credentials. Please check your username and password.")
+
+@app.get("/api/admin/login-logs")
+def fetch_login_logs():
+    return {"status": "success", "data": get_login_logs()}
 
 # --- Content Delivery (Both Admin & Viewer) ---
 @app.get("/api/content")

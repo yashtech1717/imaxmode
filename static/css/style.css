@@ -592,12 +592,72 @@ html, body {
     transform: translateY(0) scale(1);
 }
 
-/* Staged Backdrop Dots Track */
+/* Staged Backdrop Dots Track & Window Pagination */
+.backdrop-dots-track-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 0 auto 4px;
+}
+
+.dots-page-nav-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(20, 20, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    user-select: none;
+}
+
+.dots-page-nav-btn:hover {
+    background: var(--accent-color);
+    border-color: #ffffff;
+    transform: scale(1.15);
+    box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.dots-page-nav-btn:active {
+    transform: scale(0.95);
+}
+
+.dots-page-pill {
+    text-align: center;
+    font-family: var(--font-tech);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 12px;
+}
+
+.b-dots-container.dots-page-transition {
+    animation: dotsPageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dotsPageEnter {
+    from { opacity: 0; transform: translateY(4px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .backdrop-dots-track {
     position: relative;
     width: clamp(240px, 65vw, 340px);
     height: 42px;
-    margin: 0 auto 16px;
+    margin: 0;
     display: flex;
     align-items: center;
     opacity: 0.35;
@@ -1145,6 +1205,18 @@ html, body {
     background: rgba(245, 158, 11, 0.3) !important;
     border-color: #f59e0b !important;
     box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+}
+
+.btn-login-logs {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+    color: #ffffff !important;
+}
+
+.btn-login-logs:hover {
+    background: rgba(16, 185, 129, 0.3) !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
 }
 
 .btn-logout {
@@ -2705,6 +2777,218 @@ html, body {
     .reply-card-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+}
+
+/* ========================================================================== */
+/* 10. NEXT-LEVEL CINEMATIC LOGIN LOGS & AUDIT VIEWER                         */
+/* ========================================================================== */
+
+.logs-viewer-box {
+    max-width: 860px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background: rgba(12, 12, 16, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.95), 0 0 50px rgba(16, 185, 129, 0.12);
+}
+
+.logs-viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logs-count-pill {
+    padding: 3px 10px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: 9999px;
+    font-family: var(--font-tech);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #10b981;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.login-logs-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 6px;
+}
+
+.log-audit-card {
+    position: relative;
+    background: rgba(18, 18, 26, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    transition: all 0.25s ease;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.log-audit-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(24, 24, 34, 0.95);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.log-user-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.log-user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.log-user-avatar.admin {
+    background: linear-gradient(135deg, rgba(255, 42, 75, 0.85), rgba(220, 38, 38, 0.85));
+    border: 1px solid rgba(255, 42, 75, 0.4);
+    box-shadow: 0 0 14px rgba(255, 42, 75, 0.35);
+}
+
+.log-user-avatar.viewer {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.85), rgba(217, 119, 6, 0.85));
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+}
+
+.log-user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.log-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.log-username {
+    font-family: var(--font-heading);
+    font-size: 0.92rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #ffffff;
+}
+
+.log-role-pill {
+    font-family: var(--font-tech);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.log-role-pill.admin {
+    background: rgba(255, 42, 75, 0.15);
+    border: 1px solid rgba(255, 42, 75, 0.4);
+    color: #ff6b6b;
+}
+
+.log-role-pill.viewer {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+
+.log-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-tech);
+    font-size: 0.66rem;
+    color: rgba(255, 255, 255, 0.5);
+    flex-wrap: wrap;
+}
+
+.log-time-exact {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.log-ip-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-family: var(--font-tech);
+    font-size: 0.62rem;
+    color: #38bdf8;
+}
+
+.log-agent-pill {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.6;
+}
+
+.log-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-tech);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #10b981;
+    white-space: nowrap;
+}
+
+.log-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+}
+
+@media (max-width: 650px) {
+    .logs-viewer-box {
+        max-height: 92vh;
+        padding: 18px 14px;
+    }
+
+    .log-audit-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px;
     }
 }
 
