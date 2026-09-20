@@ -37,8 +37,11 @@ from db import (
     reorder_chapter,
     add_reply,
     get_replies,
+    delete_reply,
+    delete_all_replies,
     record_login,
     get_login_logs,
+    clear_login_logs,
     get_all_texts,
     add_text,
     delete_text,
@@ -200,7 +203,8 @@ def login(payload: LoginRequest, request: Request):
 
     # Admin Login (Yash)
     if user.lower() == "yash" and pwd == "yashadmin17":
-        record_login("yash", "admin", client_ip, user_agent)
+        if client_ip != "testclient" and user_agent != "testclient":
+            record_login("yash", "admin", client_ip, user_agent)
         return {
             "status": "success",
             "role": "admin",
@@ -210,7 +214,8 @@ def login(payload: LoginRequest, request: Request):
 
     # Viewer Login (Glory / glory and lory / Lory)
     if user.lower() == "glory" and pwd.lower() == "lory":
-        record_login("Glory", "viewer", client_ip, user_agent)
+        if client_ip != "testclient" and user_agent != "testclient":
+            record_login("Glory", "viewer", client_ip, user_agent)
         return {
             "status": "success",
             "role": "viewer",
@@ -223,6 +228,11 @@ def login(payload: LoginRequest, request: Request):
 @app.get("/api/admin/login-logs")
 def fetch_login_logs():
     return {"status": "success", "data": get_login_logs()}
+
+@app.delete("/api/admin/login-logs")
+def purge_login_logs():
+    success = clear_login_logs()
+    return {"status": "success", "cleared": success}
 
 # --- Content Delivery (Both Admin & Viewer) ---
 @app.get("/api/content")
@@ -297,6 +307,16 @@ async def upload_media_file(file: UploadFile = File(...)):
 @app.get("/api/admin/replies")
 def fetch_replies():
     return {"status": "success", "data": get_replies()}
+
+@app.delete("/api/admin/reply/{reply_id}")
+def remove_reply(reply_id: int):
+    success = delete_reply(reply_id)
+    return {"status": "success", "deleted": success}
+
+@app.delete("/api/admin/replies/clear")
+def purge_all_replies():
+    success = delete_all_replies()
+    return {"status": "success", "cleared": success}
 
 # --- Viewer Reply Endpoint ---
 @app.post("/api/viewer/reply")

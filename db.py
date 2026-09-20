@@ -553,11 +553,8 @@ def get_replies() -> List[Dict[str, Any]]:
                     r.chapter_index, 
                     r.chapter_title, 
                     r.created_at,
-                    c.title AS card_title,
-                    c.badge AS card_badge,
-                    c.media_type,
-                    c.media_url,
-                    c.media_name
+                    COALESCE(c.title, r.chapter_title, '') AS card_title,
+                    COALESCE(c.badge, '') AS card_badge
                 FROM replies r
                 LEFT JOIN chapters c ON r.chapter_index = c.step_index
                 ORDER BY r.id DESC;
@@ -567,6 +564,32 @@ def get_replies() -> List[Dict[str, Any]]:
     except Exception as err:
         logger.warning("Could not read replies from PostgreSQL: %s", err)
         return []
+
+
+def delete_reply(reply_id: int) -> bool:
+    """Deletes an individual reply from PostgreSQL."""
+    if not is_db_configured():
+        return False
+    try:
+        with get_db_cursor(commit=True) as cursor:
+            cursor.execute("DELETE FROM replies WHERE id = %s;", (reply_id,))
+            return cursor.rowcount > 0
+    except Exception as err:
+        logger.warning("Could not delete reply %s from PostgreSQL: %s", reply_id, err)
+        return False
+
+
+def delete_all_replies() -> bool:
+    """Clears all replies from PostgreSQL."""
+    if not is_db_configured():
+        return False
+    try:
+        with get_db_cursor(commit=True) as cursor:
+            cursor.execute("DELETE FROM replies;")
+            return True
+    except Exception as err:
+        logger.warning("Could not clear replies from PostgreSQL: %s", err)
+        return False
 
 
 # --- Texts Operations (Legacy Support) ---
@@ -606,6 +629,9 @@ def record_login(username: str, role: str, ip_address: str = "", user_agent: str
     """Safely logs successful user authentications to Supabase PostgreSQL."""
     if not is_db_configured():
         return False
+    # Filter synthetic test runs
+    if ip_address == "testclient" or user_agent == "testclient":
+        return False
     try:
         with get_db_cursor(commit=True) as cursor:
             cursor.execute("""
@@ -635,6 +661,19 @@ def get_login_logs(limit: int = 100) -> List[Dict[str, Any]]:
     except Exception as err:
         logger.warning("Could not read login logs from PostgreSQL: %s", err)
         return []
+
+
+def clear_login_logs() -> bool:
+    """Clears all login activity logs from PostgreSQL."""
+    if not is_db_configured():
+        return False
+    try:
+        with get_db_cursor(commit=True) as cursor:
+            cursor.execute("DELETE FROM login_logs;")
+            return True
+    except Exception as err:
+        logger.warning("Could not clear login logs from PostgreSQL: %s", err)
+        return False
 
 
 # --- 5-Star Feedback & Question Operations ---
