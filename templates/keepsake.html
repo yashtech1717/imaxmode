@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA // Luxury Keepsake Edition – Yash & Glory</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0c0d10;
+            --page-bg: #12141a;
+            --card-bg: #181b22;
+            --gold: #d4af37;
+            --gold-bright: #ffd700;
+            --text-primary: #f0f3f8;
+            --text-secondary: #9aa0a6;
+            --crimson: #ff3366;
+            --cyan: #00f2fe;
+            --border-gold: rgba(212, 175, 55, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            line-height: 1.6;
+            padding: 30px 15px;
+        }
+
+        .no-print-bar {
+            max-width: 900px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(24, 27, 34, 0.95);
+            border: 1px solid var(--border-gold);
+            padding: 14px 24px;
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .no-print-title {
+            font-family: 'Cinzel', serif;
+            font-size: 15px;
+            letter-spacing: 2px;
+            color: var(--gold-bright);
+        }
+
+        .btn-print-action {
+            background: linear-gradient(135deg, #d4af37, #aa8214);
+            color: #000;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn-print-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+        }
+
+        .btn-back-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            letter-spacing: 1px;
+            transition: color 0.2s;
+        }
+
+        .btn-back-link:hover {
+            color: #fff;
+        }
+
+        .booklet-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Editorial Spread Page */
+        .booklet-page {
+            background: var(--page-bg);
+            border: 1px solid var(--border-gold);
+            border-radius: 16px;
+            padding: 60px 50px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+            page-break-after: always;
+        }
+
+        .booklet-page::before {
+            content: "";
+            position: absolute;
+            inset: 8px;
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: 10px;
+            pointer-events: none;
+        }
+
+        /* Cover Page */
+        .cover-page {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 800px;
+            background: radial-gradient(circle at center, #1b1e29 0%, #0c0d10 100%);
+            border: 2px solid var(--border-gold);
+        }
+
+        .cover-edition-badge {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 13px;
+            letter-spacing: 4px;
+            color: var(--gold);
+            text-transform: uppercase;
+            margin-bottom: 24px;
+            padding: 6px 18px;
+            border: 1px solid var(--border-gold);
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .cover-title {
+            font-family: 'Cinzel', serif;
+            font-size: 56px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            background: linear-gradient(135deg, #ffffff 0%, #ffd700 50%, #aa8214 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+            line-height: 1.1;
+        }
+
+        .cover-subtitle {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 26px;
+            color: #d1d5db;
+            margin-bottom: 40px;
+            letter-spacing: 1px;
+        }
+
+        .cover-gold-divider {
+            width: 120px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ffd700, transparent);
+            margin: 0 auto 40px auto;
+        }
+
+        .cover-message {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            max-width: 600px;
+            line-height: 1.8;
+            color: #bbc1ce;
+            margin-bottom: 50px;
+        }
+
+        .cover-footer {
+            margin-top: auto;
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* Chapter Spread */
+        .chapter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding-bottom: 16px;
+            margin-bottom: 30px;
+        }
+
+        .chapter-badge {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--gold);
+            text-transform: uppercase;
+        }
+
+        .chapter-counter {
+            font-family: 'Cinzel', serif;
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: var(--text-secondary);
+        }
+
+        .chapter-title {
+            font-family: 'Cinzel', serif;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .chapter-body {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            line-height: 1.9;
+            color: #e2e8f0;
+            margin-bottom: 30px;
+            white-space: pre-line;
+        }
+
+        .chapter-media-wrap {
+            margin: 30px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #000;
+            text-align: center;
+        }
+
+        .chapter-media-img {
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .chapter-media-caption {
+            padding: 10px 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+            background: rgba(0,0,0,0.7);
+            text-align: center;
+        }
+
+        /* Secret Note Box */
+        .secret-note-box {
+            background: rgba(212, 175, 55, 0.05);
+            border-left: 3px solid var(--gold);
+            padding: 20px 24px;
+            margin-top: 30px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .secret-note-tag {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--gold);
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .secret-note-text {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #f7fafc;
+        }
+
+        /* Replies Spread */
+        .replies-page-title {
+            font-family: 'Cinzel', serif;
+            font-size: 32px;
+            letter-spacing: 3px;
+            color: var(--gold-bright);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .replies-page-sub {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+
+        .reply-item-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .reply-item-card::before {
+            content: "“";
+            position: absolute;
+            top: 10px;
+            left: 14px;
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            color: rgba(212, 175, 55, 0.2);
+            line-height: 1;
+        }
+
+        .reply-sender-badge {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--gold);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .reply-content-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 17px;
+            line-height: 1.8;
+            color: #edf2f7;
+            padding-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .reply-context-tag {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding-left: 20px;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            body {
+                background-color: #fff !important;
+                color: #111 !important;
+                padding: 0 !important;
+            }
+
+            .no-print-bar {
+                display: none !important;
+            }
+
+            .booklet-page {
+                background: #fff !important;
+                color: #111 !important;
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                margin-bottom: 0 !important;
+                padding: 40px 30px !important;
+            }
+
+            .booklet-page::before {
+                border-color: #ddd !important;
+            }
+
+            .cover-page {
+                background: #fff !important;
+                border: 2px solid #000 !important;
+            }
+
+            .cover-title {
+                -webkit-text-fill-color: #000 !important;
+                color: #000 !important;
+            }
+
+            .cover-subtitle, .cover-message, .chapter-body, .reply-content-text {
+                color: #222 !important;
+            }
+
+            .chapter-title {
+                color: #000 !important;
+            }
+
+            .secret-note-box {
+                background: #f8f8f8 !important;
+                border-left-color: #333 !important;
+            }
+
+            .secret-note-text {
+                color: #111 !important;
+            }
+
+            .reply-item-card {
+                background: #fafafa !important;
+                border: 1px solid #eee !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Bar for Browser Actions (Hidden when printing) -->
+    <div class="no-print-bar">
+        <div class="no-print-title">✦ AURA KEEPSAKE STORYBOOK EDITION</div>
+        <div style="display: flex; gap: 14px; align-items: center;">
+            <a href="/" class="btn-back-link">‹ Return to Canvas</a>
+            <button class="btn-print-action" onclick="window.print()">
+                <span>🖨 PRINT / SAVE PDF</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="booklet-container">
+        <!-- COVER PAGE -->
+        <section class="booklet-page cover-page">
+            <div class="cover-edition-badge">LIMITED ARCHIVAL EDITION // 2026</div>
+            <h1 class="cover-title">{{ config.headline_word1 }} {{ config.headline_word2 }}<br>{{ config.giant_word }}</h1>
+            <div class="cover-subtitle">A Cinematic Tribute Crafted for Glory & Yash</div>
+            <div class="cover-gold-divider"></div>
+            <p class="cover-message">
+                "{{ config.typing_text }}"
+            </p>
+            <div class="cover-footer">
+                <span>✦ AURA ARCHIVAL COLLECTION • FOREVER CHERISHED ✦</span>
+            </div>
+        </section>
+
+        <!-- CHAPTER SPREADS -->
+        {% for chap in chapters %}
+        <section class="booklet-page">
+            <div class="chapter-header">
+                <span class="chapter-badge">{{ chap.badge }}</span>
+                <span class="chapter-counter">{{ chap.counter }}</span>
+            </div>
+
+            <h2 class="chapter-title">{{ chap.title }}</h2>
+
+            <p class="chapter-body">{{ chap.body }}</p>
+
+            {% if chap.media_url and chap.media_type != 'none' %}
+            <div class="chapter-media-wrap">
+                {% if chap.media_type == 'image' %}
+                <img src="{{ chap.media_url }}" class="chapter-media-img" alt="{{ chap.media_name or chap.title }}">
+                {% elif chap.media_type == 'video' %}
+                <div style="padding: 40px 20px; color: var(--gold); font-size: 14px;">
+                    🎬 Video Memory: {{ chap.media_name or 'Attached Video Feature' }}<br>
+                    <small style="color: var(--text-secondary);">Available on digital interactive canvas: {{ chap.media_url }}</small>
+                </div>
+                {% endif %}
+                {% if chap.media_name %}
+                <div class="chapter-media-caption">📷 Attached Memory: {{ chap.media_name }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if chap.secret_note %}
+            <div class="secret-note-box">
+                <div class="secret-note-tag">💌 Personal Letter / Reflection</div>
+                <div class="secret-note-text">"{{ chap.secret_note }}"</div>
+            </div>
+            {% endif %}
+        </section>
+        {% endfor %}
+
+        <!-- REPLIES & WISHES SPREAD -->
+        {% if replies %}
+        <section class="booklet-page">
+            <h2 class="replies-page-title">TRANSMISSIONS & WISHES</h2>
+            <div class="replies-page-sub">Heartfelt messages sent by Glory during the journey</div>
+
+            {% for r in replies %}
+            <div class="reply-item-card">
+                <div class="reply-sender-badge">
+                    <span>💌</span>
+                    <span>FROM {{ r.sender | upper }}</span>
+                </div>
+                <div class="reply-content-text">{{ r.message }}</div>
+                {% if r.card_title or r.chapter_title %}
+                <div class="reply-context-tag">
+                    📍 Sent regarding Chapter {{ r.chapter_index + 1 if r.chapter_index is not none else '' }} – {{ r.card_title or r.chapter_title }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+    </div>
+
+</body>
+</html>

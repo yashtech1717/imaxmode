@@ -209,6 +209,23 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_replies_created_at ON replies(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_feedback_responses_created_at ON feedback_responses(created_at DESC);
+
+            -- Advanced Feature Migrations: Atmospheres, Secret Notes, Blur, Drafts, Views, Voice Notes & Presence
+            ALTER TABLE chapters ADD COLUMN IF NOT EXISTS atmosphere TEXT DEFAULT 'default';
+            ALTER TABLE chapters ADD COLUMN IF NOT EXISTS secret_note TEXT DEFAULT '';
+            ALTER TABLE chapters ADD COLUMN IF NOT EXISTS is_secret_blurred BOOLEAN DEFAULT FALSE;
+            ALTER TABLE chapters ADD COLUMN IF NOT EXISTS is_draft BOOLEAN DEFAULT FALSE;
+            ALTER TABLE chapters ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0;
+
+            ALTER TABLE replies ADD COLUMN IF NOT EXISTS voice_url TEXT DEFAULT '';
+
+            CREATE TABLE IF NOT EXISTS viewer_presence (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                viewer_name TEXT DEFAULT 'Glory',
+                current_chapter INTEGER DEFAULT 0,
+                last_heartbeat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                user_agent TEXT DEFAULT ''
+            );
         """)
 
         # Seed initial feedback question if empty
@@ -361,18 +378,27 @@ def update_site_config(updates: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # --- Chapter Operations ---
-def get_chapters() -> List[Dict[str, Any]]:
+def get_chapters(include_drafts: bool = True) -> List[Dict[str, Any]]:
     if not is_db_configured():
-        return [dict(c) for c in DEFAULT_CHAPTERS]
+        res = [dict(c) for c in DEFAULT_CHAPTERS]
+        if not include_drafts:
+            res = [c for c in res if not c.get("is_draft", False)]
+        return res
     try:
         with get_db_cursor() as cursor:
-            cursor.execute("SELECT * FROM chapters ORDER BY step_index ASC;")
+            if include_drafts:
+                cursor.execute("SELECT * FROM chapters ORDER BY step_index ASC;")
+            else:
+                cursor.execute("SELECT * FROM chapters WHERE COALESCE(is_draft, FALSE) = FALSE ORDER BY step_index ASC;")
             rows = cursor.fetchall()
             if rows:
                 return [dict(r) for r in rows]
     except Exception as err:
         logger.warning("Could not read chapters from PostgreSQL: %s", err)
-    return [dict(c) for c in DEFAULT_CHAPTERS]
+    res = [dict(c) for c in DEFAULT_CHAPTERS]
+    if not include_drafts:
+        res = [c for c in res if not c.get("is_draft", False)]
+    return res
 
 
 def get_chapter(step_index: int) -> Optional[Dict[str, Any]]:
@@ -395,7 +421,10 @@ def get_chapter(step_index: int) -> Optional[Dict[str, Any]]:
 
 
 def update_chapter(step_index: int, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    allowed_fields = ["theme", "badge", "counter", "title", "body", "media_type", "media_url", "media_name"]
+    allowed_fields = [
+        "theme", "badge", "counter", "title", "body", "media_type", "media_url", "media_name",
+        "atmosphere", "secret_note", "is_secret_blurred", "is_draft"
+    ]
     set_clauses = []
     values = []
     for k, v in updates.items():
@@ -430,11 +459,23 @@ def add_new_chapter(data: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any
         media_type = (data.get("media_type") if data else None) or "none"
         media_url = (data.get("media_url") if data else None) or ""
         media_name = (data.get("media_name") if data else None) or ""
+        atmosphere = (data.get("atmosphere") if data else None) or "default"
+        secret_note = (data.get("secret_note") if data else None) or ""
+        is_secret_blurred = bool(data.get("is_secret_blurred", False)) if data else False
+        is_draft = bool(data.get("is_draft", False)) if data else False
 
         cursor.execute("""
-            INSERT INTO chapters (step_index, theme, badge, counter, title, body, media_type, media_url, media_name)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (next_idx, theme, badge, counter, title, body, media_type, media_url, media_name))
+            INSERT INTO chapters (
+                step_index, theme, badge, counter, title, body,
+                media_type, media_url, media_name, atmosphere,
+                secret_note, is_secret_blurred, is_draft
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            next_idx, theme, badge, counter, title, body,
+            media_type, media_url, media_name, atmosphere,
+            secret_note, is_secret_blurred, is_draft
+        ))
 
         # Update all chapter counters
         cursor.execute("SELECT id, step_index FROM chapters ORDER BY step_index ASC;")
@@ -529,13 +570,13 @@ def reorder_chapter(from_index: int, to_index: int) -> List[Dict[str, Any]]:
 
 
 # --- Replies Operations ---
-def add_reply(sender: str, message: str, chapter_index: Optional[int] = None, chapter_title: Optional[str] = None) -> Dict[str, Any]:
+def add_reply(sender: str, message: str, chapter_index: Optional[int] = None, chapter_title: Optional[str] = None, voice_url: Optional[str] = None) -> Dict[str, Any]:
     with get_db_cursor(commit=True) as cursor:
         cursor.execute("""
-            INSERT INTO replies (sender, message, chapter_index, chapter_title)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id, sender, message, chapter_index, chapter_title, created_at;
-        """, (sender.strip() or "Glory", message.strip(), chapter_index, chapter_title or ""))
+            INSERT INTO replies (sender, message, chapter_index, chapter_title, voice_url)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id, sender, message, chapter_index, chapter_title, voice_url, created_at;
+        """, (sender.strip() or "Glory", message.strip(), chapter_index, chapter_title or "", voice_url or ""))
         row = cursor.fetchone()
         return dict(row)
 
@@ -552,6 +593,7 @@ def get_replies() -> List[Dict[str, Any]]:
                     r.message, 
                     r.chapter_index, 
                     r.chapter_title, 
+                    COALESCE(r.voice_url, '') AS voice_url,
                     r.created_at,
                     COALESCE(c.title, r.chapter_title, '') AS card_title,
                     COALESCE(c.badge, '') AS card_badge
@@ -838,4 +880,90 @@ def get_feedback_stats() -> Dict[str, Any]:
     except Exception as err:
         logger.warning("Could not calculate feedback stats from PostgreSQL: %s", err)
         return default_stats
+
+
+# --- Real-Time Viewer Presence & Engagement Analytics ---
+def update_viewer_presence(viewer_name: str = "Glory", current_chapter: int = 0, user_agent: str = "") -> Dict[str, Any]:
+    """Records the viewer's live heartbeat beacon into PostgreSQL."""
+    if not is_db_configured():
+        return {
+            "active": True,
+            "viewer_name": viewer_name,
+            "current_chapter": current_chapter,
+            "seconds_ago": 0
+        }
+    try:
+        with get_db_cursor(commit=True) as cursor:
+            cursor.execute("""
+                INSERT INTO viewer_presence (id, viewer_name, current_chapter, last_heartbeat, user_agent)
+                VALUES (1, %s, %s, CURRENT_TIMESTAMP, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    viewer_name = EXCLUDED.viewer_name,
+                    current_chapter = EXCLUDED.current_chapter,
+                    last_heartbeat = CURRENT_TIMESTAMP,
+                    user_agent = EXCLUDED.user_agent;
+            """, (viewer_name or "Glory", current_chapter, user_agent))
+        return get_viewer_presence()
+    except Exception as err:
+        logger.warning("Could not update viewer presence in PostgreSQL: %s", err)
+        return {
+            "active": True,
+            "viewer_name": viewer_name,
+            "current_chapter": current_chapter,
+            "seconds_ago": 0
+        }
+
+
+def get_viewer_presence() -> Dict[str, Any]:
+    """Retrieves Glory's latest heartbeat and online presence status."""
+    default_state = {
+        "active": False,
+        "viewer_name": "Glory",
+        "current_chapter": 0,
+        "last_heartbeat": None,
+        "seconds_ago": 9999
+    }
+    if not is_db_configured():
+        return default_state
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT id, viewer_name, current_chapter, last_heartbeat, user_agent FROM viewer_presence WHERE id = 1;")
+            row = cursor.fetchone()
+            if row:
+                d = dict(row)
+                from datetime import datetime, timezone
+                last_hb = d.get("last_heartbeat")
+                now = datetime.now(timezone.utc)
+                if last_hb:
+                    if last_hb.tzinfo is None:
+                        last_hb = last_hb.replace(tzinfo=timezone.utc)
+                    seconds_ago = int((now - last_hb).total_seconds())
+                else:
+                    seconds_ago = 9999
+                d["seconds_ago"] = max(0, seconds_ago)
+                d["active"] = seconds_ago <= 60  # active if beacon pinged within last 60 seconds
+                return d
+    except Exception as err:
+        logger.warning("Could not fetch viewer presence from PostgreSQL: %s", err)
+    return default_state
+
+
+def increment_chapter_view(step_index: int) -> int:
+    """Increments the view count for a given chapter when engaged by viewer."""
+    if not is_db_configured():
+        return 1
+    try:
+        with get_db_cursor(commit=True) as cursor:
+            cursor.execute("""
+                UPDATE chapters
+                SET view_count = COALESCE(view_count, 0) + 1
+                WHERE step_index = %s
+                RETURNING view_count;
+            """, (step_index,))
+            row = cursor.fetchone()
+            return int(row["view_count"]) if row else 1
+    except Exception as err:
+        logger.warning("Could not increment view_count for chapter %s in PostgreSQL: %s", step_index, err)
+        return 1
+
 

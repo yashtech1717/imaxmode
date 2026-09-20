@@ -50,7 +50,10 @@ from db import (
     get_all_feedback_questions,
     submit_feedback,
     get_feedback_responses,
-    get_feedback_stats
+    get_feedback_stats,
+    update_viewer_presence,
+    get_viewer_presence,
+    increment_chapter_view
 )
 
 logger = logging.getLogger("aura.server")
@@ -115,6 +118,10 @@ class ChapterUpdate(BaseModel):
     media_type: Optional[str] = None
     media_url: Optional[str] = None
     media_name: Optional[str] = None
+    atmosphere: Optional[str] = None
+    secret_note: Optional[str] = None
+    is_secret_blurred: Optional[bool] = None
+    is_draft: Optional[bool] = None
 
 class ChapterReorder(BaseModel):
     from_index: int
@@ -126,6 +133,14 @@ class ReplyCreate(BaseModel):
     message: str = Field(..., min_length=1, max_length=3000)
     chapter_index: Optional[int] = None
     chapter_title: Optional[str] = None
+    voice_url: Optional[str] = None
+
+class ViewerHeartbeat(BaseModel):
+    viewer_name: Optional[str] = "Glory"
+    current_chapter: Optional[int] = 0
+
+class ChapterViewRequest(BaseModel):
+    step_index: int
 
 class TextCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=2000)
@@ -236,11 +251,11 @@ def purge_login_logs():
 
 # --- Content Delivery (Both Admin & Viewer) ---
 @app.get("/api/content")
-def fetch_content():
+def fetch_content(is_admin: bool = False):
     return {
         "status": "success",
         "config": get_site_config(),
-        "chapters": get_chapters()
+        "chapters": get_chapters(include_drafts=is_admin)
     }
 
 # --- Admin CMS Endpoints ---
@@ -318,16 +333,53 @@ def purge_all_replies():
     success = delete_all_replies()
     return {"status": "success", "cleared": success}
 
-# --- Viewer Reply Endpoint ---
+# --- Viewer Reply Endpoint with Voice Note Support ---
 @app.post("/api/viewer/reply")
 def submit_reply(payload: ReplyCreate):
     created = add_reply(
         sender=payload.sender or "Glory",
         message=payload.message,
         chapter_index=payload.chapter_index,
-        chapter_title=payload.chapter_title
+        chapter_title=payload.chapter_title,
+        voice_url=payload.voice_url
     )
     return {"status": "success", "data": created}
+
+# --- Real-Time Viewer Heartbeat Beacon & Chapter Analytics ---
+@app.post("/api/viewer/heartbeat")
+def api_viewer_heartbeat(payload: ViewerHeartbeat, request: Request):
+    user_agent = request.headers.get("User-Agent", "")
+    presence = update_viewer_presence(
+        viewer_name=payload.viewer_name or "Glory",
+        current_chapter=payload.current_chapter or 0,
+        user_agent=user_agent
+    )
+    return {"status": "success", "presence": presence}
+
+@app.get("/api/admin/viewer-presence")
+def api_admin_viewer_presence():
+    return {"status": "success", "presence": get_viewer_presence()}
+
+@app.post("/api/viewer/chapter-view")
+def api_viewer_chapter_view(payload: ChapterViewRequest):
+    new_count = increment_chapter_view(payload.step_index)
+    return {"status": "success", "step_index": payload.step_index, "view_count": new_count}
+
+# --- Luxury Keepsake Booklet HTML View ---
+@app.get("/keepsake")
+def keepsake_page(request: Request):
+    config = get_site_config()
+    chapters = get_chapters(include_drafts=True)
+    replies = get_replies()
+    return templates.TemplateResponse(
+        request=request,
+        name="keepsake.html",
+        context={
+            "config": config,
+            "chapters": chapters,
+            "replies": replies
+        }
+    )
  
 # --- 5-Star Feedback & Question Endpoints ---
 @app.get("/api/feedback/active-question")
