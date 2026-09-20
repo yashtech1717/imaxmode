@@ -394,27 +394,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // 2. IMAX Fullscreen Mode Controller
+    // 2. IMAX Theatrical Immersion & Audio Synthesizer Engine
     // ==========================================================================
+    let isImaxActive = false;
+
+    function playImaxBoom() {
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            if (!audioCtx) audioCtx = new AudioContextClass();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+
+            // Deep Theatrical Sub-Bass Oscillator (75Hz -> 26Hz exponential sweep)
+            const subOsc = audioCtx.createOscillator();
+            const subGain = audioCtx.createGain();
+            subOsc.type = 'sine';
+            subOsc.frequency.setValueAtTime(75, now);
+            subOsc.frequency.exponentialRampToValueAtTime(26, now + 1.8);
+
+            subGain.gain.setValueAtTime(0.001, now);
+            subGain.gain.linearRampToValueAtTime(0.85, now + 0.15);
+            subGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+            // Harmonic Cinema Tone (140Hz -> 52Hz)
+            const harmOsc = audioCtx.createOscillator();
+            const harmGain = audioCtx.createGain();
+            harmOsc.type = 'triangle';
+            harmOsc.frequency.setValueAtTime(140, now);
+            harmOsc.frequency.exponentialRampToValueAtTime(52, now + 1.6);
+
+            harmGain.gain.setValueAtTime(0.001, now);
+            harmGain.gain.linearRampToValueAtTime(0.35, now + 0.12);
+            harmGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+
+            subOsc.connect(subGain);
+            harmOsc.connect(harmGain);
+            subGain.connect(audioCtx.destination);
+            harmGain.connect(audioCtx.destination);
+
+            subOsc.start(now);
+            harmOsc.start(now);
+            subOsc.stop(now + 2.9);
+            harmOsc.stop(now + 2.3);
+        } catch (err) {
+            console.warn('IMAX Audio Boom error:', err);
+        }
+    }
+
+    function toggleImaxMode() {
+        isImaxActive = !isImaxActive;
+        document.body.classList.toggle('imax-active', isImaxActive);
+
+        if (isImaxActive) {
+            if (fullscreenLabel) fullscreenLabel.textContent = "EXIT IMAX";
+            playImaxBoom();
+            triggerAnamorphicLaserSweep();
+            showToast('IMAX THEATRICAL IMMERSION ENGAGED ✦');
+            if (navigator.vibrate) try { navigator.vibrate(25); } catch (_) {}
+            // Attempt native fullscreen where supported
+            if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+        } else {
+            if (fullscreenLabel) fullscreenLabel.textContent = "IMAX MODE";
+            showToast('IMAX IMMERSION STANDBY');
+            if (document.exitFullscreen && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+    }
+
     if (fullscreenBtn && fullscreenLabel) {
         fullscreenBtn.addEventListener('click', () => {
             initAudio();
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(() => {});
-                fullscreenLabel.textContent = "EXIT IMAX";
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                    fullscreenLabel.textContent = "IMAX MODE";
-                }
-            }
+            toggleImaxMode();
         });
 
         document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                fullscreenLabel.textContent = "IMAX MODE";
-            } else {
-                fullscreenLabel.textContent = "EXIT IMAX";
+            if (!document.fullscreenElement && isImaxActive) {
+                isImaxActive = false;
+                document.body.classList.remove('imax-active');
+                if (fullscreenLabel) fullscreenLabel.textContent = "IMAX MODE";
             }
         });
     }
@@ -532,6 +594,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const stardustTrails = [];
     const burstParticles = [];
     const fireworks = [];
+    const anamorphicBeams = [];
+
+    function triggerAnamorphicLaserSweep(posY) {
+        const y = posY != null ? posY : height * (0.35 + Math.random() * 0.3);
+        anamorphicBeams.push({
+            y: y,
+            alpha: 1.0,
+            height: Math.random() * 2.5 + 3,
+            decay: 0.022,
+            color: Math.random() > 0.4 ? 'rgba(245, 158, 11,' : 'rgba(56, 189, 248,'
+        });
+    }
 
     function addStardust(x, y) {
         stardustTrails.push({
@@ -661,6 +735,30 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.shadowBlur = 12;
             ctx.shadowColor = `${f.color} 0.9)`;
             ctx.fill();
+        }
+
+        // 5. Anamorphic Laser Flare Sweeps
+        for (let i = anamorphicBeams.length - 1; i >= 0; i--) {
+            const b = anamorphicBeams[i];
+            b.alpha -= b.decay;
+            if (b.alpha <= 0) {
+                anamorphicBeams.splice(i, 1);
+                continue;
+            }
+
+            const grad = ctx.createLinearGradient(0, b.y, width, b.y);
+            grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            grad.addColorStop(0.2, `${b.color} ${b.alpha * 0.4})`);
+            grad.addColorStop(0.5, `rgba(255, 255, 255, ${b.alpha * 0.95})`);
+            grad.addColorStop(0.8, `${b.color} ${b.alpha * 0.4})`);
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+            ctx.save();
+            ctx.fillStyle = grad;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = `${b.color} ${b.alpha})`;
+            ctx.fillRect(0, b.y - b.height / 2, width, b.height);
+            ctx.restore();
         }
 
         requestAnimationFrame(renderVfxLoop);
@@ -1991,21 +2089,38 @@ document.addEventListener('DOMContentLoaded', () => {
                     replies.forEach(r => {
                         const item = document.createElement('div');
                         item.className = 'reply-item-card';
-                        const contextBadge = r.chapter_title ? `<span class="reply-context-badge">📍 Card 0${(r.chapter_index != null ? r.chapter_index + 1 : '')}: ${escapeHtml(r.chapter_title)}</span>` : '';
+                        const cardTitle = r.card_title || r.chapter_title || '';
+                        const contextBadge = cardTitle ? `<span class="reply-context-badge">📍 Card 0${(r.chapter_index != null ? r.chapter_index + 1 : '')}: ${escapeHtml(cardTitle)}</span>` : '';
                         item.innerHTML = `
                             <div class="reply-item-meta">
-                                <span class="reply-sender-name">💌 ${escapeHtml(r.sender)}</span>
-                                <span class="reply-time">${formatTransmissionTime(r.created_at)}</span>
+                                <span class="reply-sender-name">💌 ${escapeHtml(r.sender || 'Glory')}</span>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="reply-time">${formatTransmissionTime(r.created_at)}</span>
+                                    <button type="button" class="btn-delete-reply" style="padding: 2px 7px; font-size: 0.58rem;" data-reply-id="${r.id}">✕</button>
+                                </div>
                             </div>
                             ${contextBadge}
-                            <p class="reply-item-content">${escapeHtml(r.message)}</p>
+                            <div style="margin-top: 8px; padding: 10px 14px; background: rgba(255,255,255,0.05); border-left: 3px solid var(--accent-color); border-radius: 8px;">
+                                <p class="reply-item-content" style="font-size: 0.94rem; font-weight: 500; color: #ffffff; line-height: 1.55;">“${escapeHtml(r.message)}”</p>
+                            </div>
                         `;
+                        const delBtn = item.querySelector('.btn-delete-reply');
+                        if (delBtn) {
+                            delBtn.addEventListener('click', async () => {
+                                if (!confirm('Delete this transmission?')) return;
+                                try {
+                                    await fetch(`/api/admin/reply/${r.id}`, { method: 'DELETE' });
+                                    showToast('Transmission deleted ✦');
+                                    fetchAndRenderRichReplies();
+                                } catch (_) {}
+                            });
+                        }
                         adminRepliesList.appendChild(item);
                     });
                 }
             }
 
-            // Render Dedicated Modal Rich Container with Uploaded Card Media
+            // Render Dedicated Modal Rich Container
             if (richRepliesContainer) {
                 if (replies.length === 0) {
                     richRepliesContainer.innerHTML = `
@@ -2031,51 +2146,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     const cardTitle = r.card_title || r.chapter_title || '';
                     const timeStr = formatTransmissionTime(r.created_at);
 
-                    // Context Banner
                     let contextHtml = '';
                     if (r.chapter_index != null || cardTitle) {
-                        const cardNum = r.chapter_index != null ? `0${r.chapter_index + 1}` : 'CARD';
+                        const cardNum = r.chapter_index != null ? `0${r.chapter_index + 1}` : '';
                         contextHtml = `
-                            <div class="reply-context-banner">
-                                <span>📍 CHAPTER ${cardNum}: ${escapeHtml(cardTitle)}</span>
-                            </div>
-                        `;
-                    }
-
-                    // Media Attachment
-                    let mediaHtml = '';
-                    const mediaType = (r.media_type || '').toLowerCase();
-                    const mediaUrl = r.media_url || '';
-                    const mediaName = r.media_name || 'Memory Attachment';
-
-                    if (mediaType === 'image' && mediaUrl) {
-                        mediaHtml = `
-                            <div class="rich-reply-media-attachment">
-                                <div class="media-attachment-label">
-                                    <span>📷</span>
-                                    <span>ATTACHED MEMORY (PHOTO): ${escapeHtml(mediaName)}</span>
-                                </div>
-                                <img src="${mediaUrl}" class="rich-reply-thumb" alt="Memory Photo" onclick="window.open('${mediaUrl}', '_blank')" title="Click to view full image in high resolution">
-                            </div>
-                        `;
-                    } else if (mediaType === 'video' && mediaUrl) {
-                        mediaHtml = `
-                            <div class="rich-reply-media-attachment">
-                                <div class="media-attachment-label">
-                                    <span>🎬</span>
-                                    <span>ATTACHED MEMORY (VIDEO): ${escapeHtml(mediaName)}</span>
-                                </div>
-                                <video src="${mediaUrl}" controls playsinline class="rich-reply-video" preload="metadata"></video>
-                            </div>
-                        `;
-                    } else if (mediaType === 'audio' && mediaUrl) {
-                        mediaHtml = `
-                            <div class="rich-reply-media-attachment">
-                                <div class="media-attachment-label">
-                                    <span>♫</span>
-                                    <span>ATTACHED MEMORY (AUDIO): ${escapeHtml(mediaName)}</span>
-                                </div>
-                                <audio src="${mediaUrl}" controls class="rich-reply-audio" preload="metadata"></audio>
+                            <div class="reply-context-ribbon">
+                                <span>📍 Sent regarding Chapter ${cardNum}${cardTitle ? ' – ' + escapeHtml(cardTitle) : ''}</span>
                             </div>
                         `;
                     }
@@ -2087,7 +2163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="reply-author-meta">
                                     <div class="author-title-row">
                                         <span class="reply-author-name">${escapeHtml(senderName)}</span>
-                                        <span class="reply-verified-badge">VERIFIED</span>
+                                        <span class="reply-verified-badge">VERIFIED TRANSMISSION</span>
                                     </div>
                                     <span class="reply-timestamp">⏱ ${escapeHtml(timeStr)}</span>
                                 </div>
@@ -2096,16 +2172,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button type="button" class="btn-copy-reply" title="Copy transmission text" data-reply-id="${r.id || idx}">
                                     <span>📋 COPY</span>
                                 </button>
+                                <button type="button" class="btn-delete-reply" title="Delete transmission" data-reply-id="${r.id}">
+                                    <span>🗑 DELETE</span>
+                                </button>
                             </div>
                         </div>
 
-                        ${contextHtml}
-
-                        <div class="reply-message-body">
-                            "${escapeHtml(r.message)}"
+                        <!-- Glory's Direct Transmission Spotlight -->
+                        <div class="reply-quote-box">
+                            <div class="reply-quote-tag">
+                                <span>💌 MESSAGE FROM ${escapeHtml(senderName.toUpperCase())}:</span>
+                            </div>
+                            <div class="reply-quote-text"><span class="reply-quote-mark">“</span>${escapeHtml(r.message)}<span class="reply-quote-mark">”</span></div>
                         </div>
 
-                        ${mediaHtml}
+                        ${contextHtml}
                     `;
 
                     // Wire copy button
@@ -2125,6 +2206,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
 
+                    // Wire delete button
+                    const delBtn = card.querySelector('.btn-delete-reply');
+                    if (delBtn) {
+                        delBtn.addEventListener('click', async () => {
+                            if (!confirm('Delete this transmission from Glory?')) return;
+                            try {
+                                const delRes = await fetch(`/api/admin/reply/${r.id}`, { method: 'DELETE' });
+                                const delData = await delRes.json();
+                                if (delData.status === 'success') {
+                                    showToast('Transmission deleted ✦');
+                                    fetchAndRenderRichReplies();
+                                }
+                            } catch (e) {
+                                showToast('Failed to delete transmission.');
+                            }
+                        });
+                    }
+
                     richRepliesContainer.appendChild(card);
                 });
             }
@@ -2132,6 +2231,46 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error fetching rich replies:', err);
         }
     }
+
+    const modalClearRepliesBtn = document.getElementById('modalClearRepliesBtn');
+    const drawerClearRepliesBtn = document.getElementById('drawerClearRepliesBtn');
+
+    async function handleClearAllReplies() {
+        if (!confirm('Are you sure you want to permanently clear ALL replies and wishes from Glory?')) return;
+        try {
+            const res = await fetch('/api/admin/replies/clear', { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast('All replies cleared ✦');
+                fetchAndRenderRichReplies();
+            }
+        } catch (e) {
+            showToast('Failed to clear replies.');
+        }
+    }
+
+    if (modalClearRepliesBtn) modalClearRepliesBtn.addEventListener('click', handleClearAllReplies);
+    if (drawerClearRepliesBtn) drawerClearRepliesBtn.addEventListener('click', handleClearAllReplies);
+
+    const modalClearLogsBtn = document.getElementById('modalClearLogsBtn');
+    const drawerClearLogsBtn = document.getElementById('drawerClearLogsBtn');
+
+    async function handleClearAllLogs() {
+        if (!confirm('Are you sure you want to permanently clear all login access history?')) return;
+        try {
+            const res = await fetch('/api/admin/login-logs', { method: 'DELETE' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast('Login audit logs cleared ✦');
+                fetchAndRenderLoginLogs();
+            }
+        } catch (e) {
+            showToast('Failed to clear login logs.');
+        }
+    }
+
+    if (modalClearLogsBtn) modalClearLogsBtn.addEventListener('click', handleClearAllLogs);
+    if (drawerClearLogsBtn) drawerClearLogsBtn.addEventListener('click', handleClearAllLogs);
 
     if (refreshRepliesBtn) {
         refreshRepliesBtn.addEventListener('click', () => {
