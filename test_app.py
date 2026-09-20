@@ -177,6 +177,33 @@ class TestMockedCloudEndpoints(unittest.TestCase):
         self.assertEqual(data["status"], "success")
         self.assertEqual(len(data["data"]), 1)
 
+    @patch("main.delete_reply")
+    def test_admin_delete_reply(self, mock_delete_reply):
+        mock_delete_reply.return_value = True
+        res = self.client.delete("/api/admin/reply/1")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        mock_delete_reply.assert_called_once_with(1)
+
+    @patch("main.delete_all_replies")
+    def test_admin_clear_replies(self, mock_clear_replies):
+        mock_clear_replies.return_value = True
+        res = self.client.delete("/api/admin/replies/clear")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        mock_clear_replies.assert_called_once()
+
+    @patch("main.clear_login_logs")
+    def test_admin_clear_login_logs(self, mock_clear_logs):
+        mock_clear_logs.return_value = True
+        res = self.client.delete("/api/admin/login-logs")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        mock_clear_logs.assert_called_once()
+
     @patch("main.get_login_logs")
     def test_admin_fetch_login_logs(self, mock_get_login_logs):
         mock_get_login_logs.return_value = [
