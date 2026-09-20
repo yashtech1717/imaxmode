@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=3.0">
+    <link rel="stylesheet" href="/static/css/style.css?v=3.2">
 </head>
 <body class="theme-crimson">
     <!-- Cinematic VFX Particles Canvas (Floating Embers, Touch Trails, Fireworks & Supernova) -->
@@ -36,11 +36,30 @@
 
     <!-- HEADER CONTROL STRIP -->
     <header class="cinema-header-strip">
-        <div class="header-left">
-            <button class="cinema-control-btn btn-fullscreen" id="fullscreenBtn" title="Toggle Fullscreen Cinema Mode">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                <span id="fullscreenLabel">IMAX MODE</span>
-            </button>
+        <div class="header-top-row">
+            <div class="header-left">
+                <div class="cinema-brand">
+                    <span class="brand-title">AURA</span>
+                    <span class="brand-sub">// 2026</span>
+                </div>
+                <div class="live-status-pill">
+                    <span class="status-dot"></span>
+                    <span class="status-text">STANDBY</span>
+                </div>
+                <button class="cinema-control-btn btn-fullscreen" id="fullscreenBtn" title="Toggle Fullscreen Cinema Mode">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    <span id="fullscreenLabel">IMAX MODE</span>
+                </button>
+            </div>
+
+            <div class="header-right">
+                <button class="cinema-control-btn btn-audio" id="soundToggleBtn" title="Toggle Cinematic Sound">
+                    <span class="sound-wave-icon">
+                        <span></span><span></span><span></span><span></span>
+                    </span>
+                    <span id="soundLabel">AUDIO ON</span>
+                </button>
+            </div>
         </div>
 
         <div class="header-center" id="authControls" style="display: none;">
@@ -74,15 +93,6 @@
             </button>
             <button class="cinema-control-btn btn-logout" id="logoutBtn" title="Log Out">
                 <span>⎋ EXIT</span>
-            </button>
-        </div>
-
-        <div class="header-right">
-            <button class="cinema-control-btn btn-audio" id="soundToggleBtn" title="Toggle Cinematic Sound">
-                <span class="sound-wave-icon">
-                    <span></span><span></span><span></span><span></span>
-                </span>
-                <span id="soundLabel">AUDIO ON</span>
             </button>
         </div>
     </header>
@@ -865,7 +875,7 @@
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js?v=3.0"></script>
+    <script src="/static/js/app.js?v=3.2"></script>
 </body>
 </html>
 

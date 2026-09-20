@@ -1323,6 +1323,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Touch Swipe Navigation for Mobile Devices (Swipe left for Next, Swipe right for Prev)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    const swipeTarget = document.getElementById('cardOuter') || document.getElementById('chapterStage');
+    if (swipeTarget) {
+        swipeTarget.addEventListener('touchstart', (e) => {
+            if (e.touches && e.touches[0]) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+            }
+        }, { passive: true });
+
+        swipeTarget.addEventListener('touchend', (e) => {
+            if (!e.changedTouches || !e.changedTouches[0] || isTransitioning) return;
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+            const elapsedTime = Date.now() - touchStartTime;
+
+            // Must be quick (< 500ms), horizontal (|deltaX| > 45px), and primarily horizontal
+            if (elapsedTime < 500 && Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+                if (deltaX < 0) {
+                    // Swipe Left -> Next Chapter
+                    if (nextStepBtn && !nextStepBtn.disabled) {
+                        if (navigator.vibrate) try { navigator.vibrate(14); } catch (_) {}
+                        nextStepBtn.click();
+                    }
+                } else if (deltaX > 0) {
+                    // Swipe Right -> Previous Chapter
+                    if (currentStep > 0 && prevStepBtn && !prevStepBtn.disabled) {
+                        if (navigator.vibrate) try { navigator.vibrate(14); } catch (_) {}
+                        prevStepBtn.click();
+                    }
+                }
+            }
+        }, { passive: true });
+    }
+
     if (dotsPrevBtn) {
         dotsPrevBtn.addEventListener('click', () => {
             if (isTransitioning) return;

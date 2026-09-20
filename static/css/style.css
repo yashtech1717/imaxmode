@@ -276,11 +276,93 @@ html, body {
     box-sizing: border-box;
 }
 
-.header-left, .header-center, .header-right {
+/* Header Top Row wrapper (Desktop uses display: contents to let items participate directly in strip flex) */
+.header-top-row {
+    display: contents;
+}
+
+.header-left {
+    order: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+}
+
+.header-center {
+    order: 2;
     display: flex;
     align-items: center;
     gap: 8px;
     pointer-events: auto;
+}
+
+.header-right {
+    order: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+}
+
+/* Cinema Brand Logo & Status Pill */
+.cinema-brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--font-tech);
+    user-select: none;
+    letter-spacing: 0.16em;
+}
+
+.brand-title {
+    font-size: 0.95rem;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 0.2em;
+    text-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+}
+
+.brand-sub {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    letter-spacing: 0.12em;
+    transition: color 0.8s ease;
+}
+
+.live-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 9999px;
+    user-select: none;
+    backdrop-filter: blur(10px);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: pulseDot 2s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px #10b981; }
+    50% { opacity: 0.4; transform: scale(0.85); box-shadow: 0 0 2px #10b981; }
+}
+
+.status-text {
+    font-family: var(--font-tech);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: #34d399;
 }
 
 .cinema-control-btn {
@@ -1342,10 +1424,9 @@ html, body {
 /* 1. Cinematic Login Portal */
 .portal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     height: 100dvh;
     background: rgba(4, 4, 6, 0.88);
     backdrop-filter: blur(28px);
@@ -1354,8 +1435,10 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 16px;
     box-sizing: border-box;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s ease;
 }
 
@@ -3570,31 +3653,41 @@ html, body {
         top: 0;
         left: 0;
         width: 100%;
-        padding: calc(env(safe-area-inset-top, 10px) + 6px) 12px 6px;
+        padding: calc(env(safe-area-inset-top, 8px) + 6px) 12px 6px;
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
-        background: linear-gradient(180deg, rgba(8, 8, 12, 0.94) 0%, rgba(8, 8, 12, 0.78) 75%, transparent 100%);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        gap: 6px;
+        background: linear-gradient(180deg, rgba(8, 8, 12, 0.96) 0%, rgba(8, 8, 12, 0.88) 75%, transparent 100%);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         z-index: 70;
         box-sizing: border-box;
     }
 
-    /* Top Row: Brand & Audio */
+    /* Row 1: Brand & Audio in a unified 38px touch bar */
+    .header-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        order: 1;
+    }
+
     .header-left {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         flex: 1;
+        min-width: 0;
     }
 
     .header-right {
         display: flex;
         align-items: center;
         gap: 6px;
+        flex-shrink: 0;
     }
 
     /* Hide desktop-only fullscreen button on mobile */
@@ -3603,35 +3696,60 @@ html, body {
     }
 
     .cinema-brand {
-        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+        font-family: var(--font-tech);
     }
 
     .brand-title {
-        letter-spacing: 0.14em;
+        font-size: 0.84rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        color: #ffffff;
     }
 
     .brand-sub {
         font-size: 0.58rem;
+        font-weight: 700;
+        color: var(--accent-color);
+        letter-spacing: 0.1em;
     }
 
     .live-status-pill {
-        padding: 3px 7px;
-        font-size: 0.58rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        border-radius: 9999px;
+    }
+
+    .status-dot {
+        width: 5px;
+        height: 5px;
     }
 
     .status-text {
         font-size: 0.56rem;
+        letter-spacing: 0.08em;
     }
 
     .btn-audio {
-        padding: 5px 10px !important;
-        font-size: 0.6rem !important;
-        gap: 5px !important;
+        padding: 6px 12px !important;
+        font-size: 0.62rem !important;
+        gap: 6px !important;
+        border-radius: 9999px;
+        background: rgba(20, 20, 30, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #e2e8f0;
     }
 
-    /* Row 2: Action Dock (Swipeable Touch Bar) */
+    /* Row 2: Action Dock (Swipeable Touch Bar - ONLY rendered when authenticated) */
     .header-center {
-        display: flex !important;
+        order: 2;
+        display: flex;
         align-items: center;
         gap: 6px;
         width: 100%;
@@ -3649,7 +3767,7 @@ html, body {
     .header-center .cinema-control-btn {
         flex-shrink: 0;
         white-space: nowrap;
-        padding: 5px 11px !important;
+        padding: 6px 12px !important;
         font-size: 0.62rem !important;
         letter-spacing: 0.06em;
         border-radius: 9999px;
@@ -3657,91 +3775,121 @@ html, body {
 
     .user-chip {
         flex-shrink: 0;
-        padding: 4px 9px;
+        padding: 5px 10px;
         font-size: 0.6rem;
         letter-spacing: 0.08em;
     }
 
     .btn-logout {
         flex-shrink: 0;
-        padding: 5px 9px !important;
+        padding: 6px 10px !important;
         font-size: 0.6rem !important;
     }
 
     /* 2. Main Scene Container & Spacing */
     .scene-container {
-        padding-top: calc(env(safe-area-inset-top, 16px) + 95px) !important;
-        padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 40px) !important;
-        padding-left: 14px;
-        padding-right: 14px;
+        padding-top: calc(env(safe-area-inset-top, 8px) + 52px) !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 24px) !important;
+        padding-left: 12px;
+        padding-right: 12px;
         min-height: 100dvh;
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
         box-sizing: border-box;
+    }
+
+    /* When authenticated action dock is active, smoothly increase scene padding */
+    .cinema-header-strip:has(#authControls:not([style*="display: none"])) ~ .scene-container {
+        padding-top: calc(env(safe-area-inset-top, 8px) + 90px) !important;
     }
 
     .foreground-content {
         max-width: 100%;
+        width: 100%;
         padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
     /* 3. Fluid Typography & Hero Layer */
     .giant-backdrop-text {
-        opacity: 0.22;
+        position: fixed;
+        top: 36%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        opacity: 0.12;
+        pointer-events: none;
+        z-index: 0;
     }
 
     .giant-word {
-        font-size: clamp(4.8rem, 24vw, 7.8rem);
+        font-size: clamp(3.8rem, 20vw, 6rem);
         letter-spacing: 0.1em;
         text-indent: 0.1em;
     }
 
     .cyber-accent-bar {
-        gap: 8px;
-        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 4px;
     }
 
     .theme-line {
-        width: 32px;
+        width: 24px;
     }
 
     .cyber-badge {
-        font-size: 0.6rem;
-        letter-spacing: 0.18em;
+        font-size: 0.58rem;
+        letter-spacing: 0.16em;
+        padding: 2px 6px;
     }
 
     .sub-headline {
-        font-size: clamp(1.35rem, 6.2vw, 2.1rem);
-        letter-spacing: 0.22em;
-        text-indent: 0.22em;
+        font-size: clamp(1.2rem, 5.2vw, 1.7rem);
+        letter-spacing: 0.18em;
+        text-indent: 0.18em;
         margin-bottom: 4px;
-        gap: 0.3em;
+        gap: 0.25em;
+        line-height: 1.15;
     }
 
     .typing-container {
         min-height: auto;
-        margin: 4px 0 10px;
-        padding: 6px 10px;
-        max-width: 95vw;
+        margin: 4px auto 8px;
+        padding: 8px 12px;
+        max-width: 94vw;
+        border-radius: 12px;
+        background: rgba(12, 12, 18, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .typed-message-wrapper {
-        font-size: 0.88rem;
-        line-height: 1.55;
+        font-size: 0.82rem;
+        line-height: 1.5;
     }
 
     /* 4. Top Circle Number Indicators */
     .backdrop-dots-track-wrap {
         width: 100%;
-        max-width: 330px;
+        max-width: 320px;
         gap: 8px;
-        margin: 0 auto 4px;
+        margin: 4px auto 2px;
         padding: 0 4px;
         box-sizing: border-box;
     }
 
     .backdrop-dots-track {
         width: 100%;
-        max-width: 270px;
+        max-width: 260px;
         height: 42px;
+        opacity: 0.95 !important;
+        transform: scale(1) !important;
     }
 
     .b-dots-container {
@@ -3749,86 +3897,101 @@ html, body {
     }
 
     .b-dot {
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .b-dot-num {
-        font-size: 0.72rem;
+        font-size: 0.74rem;
         font-weight: 800;
+        color: rgba(255, 255, 255, 0.75);
     }
 
     .b-dot.active {
-        transform: scale(1.15);
+        transform: scale(1.16);
+        box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .b-dot.active .b-dot-num {
+        color: #ffffff;
     }
 
     .dots-page-nav-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 1.1rem;
+        width: 34px;
+        height: 34px;
+        font-size: 1.15rem;
         flex-shrink: 0;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .dots-page-pill {
-        font-size: 0.64rem;
-        letter-spacing: 0.1em;
-        margin-bottom: 10px;
+        font-size: 0.62rem;
+        letter-spacing: 0.12em;
+        margin-bottom: 8px;
+        color: rgba(255, 255, 255, 0.6);
     }
 
     /* 5. Chapter Card & Actions */
     .chapter-stage {
         width: 100%;
-        max-width: 520px;
-        margin-top: 6px;
+        max-width: 460px;
+        margin-top: 4px;
     }
 
     .chapter-card-outer {
         border-radius: 20px;
         width: 100%;
+        box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.9), 0 0 25px var(--accent-soft);
     }
 
     .chapter-card {
-        padding: 20px 16px;
+        padding: 18px 16px;
         border-radius: 19px;
     }
 
     .chapter-meta {
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .chapter-badge {
-        font-size: 0.66rem;
+        font-size: 0.64rem;
         letter-spacing: 0.14em;
     }
 
     .chapter-counter {
-        font-size: 0.66rem;
+        font-size: 0.64rem;
     }
 
     .chapter-title {
-        font-size: clamp(1.15rem, 5vw, 1.45rem);
+        font-size: clamp(1.15rem, 4.8vw, 1.4rem);
         margin-bottom: 8px;
         letter-spacing: 0.04em;
+        line-height: 1.25;
     }
 
     .chapter-body {
-        font-size: 0.88rem;
-        line-height: 1.62;
+        font-size: 0.86rem;
+        line-height: 1.6;
         color: #cbd5e1;
     }
 
     /* Attached Media Trigger Button */
     .card-media-trigger-wrap {
-        margin: 12px 0 6px;
+        margin: 10px 0 4px;
         width: 100%;
     }
 
     .btn-card-media {
         width: 100%;
+        min-height: 44px;
         justify-content: center;
-        padding: 10px 16px;
-        font-size: 0.72rem;
+        padding: 11px 16px;
+        font-size: 0.74rem;
         border-radius: 12px;
+        touch-action: manipulation;
     }
 
     /* Finale Supernova Button */
@@ -3839,36 +4002,64 @@ html, body {
 
     .btn-supernova {
         width: 100%;
+        min-height: 48px;
         justify-content: center;
         padding: 13px 20px;
-        font-size: 0.82rem;
+        font-size: 0.84rem;
         letter-spacing: 0.14em;
         border-radius: 14px;
+        touch-action: manipulation;
     }
 
-    /* Next / Back Chapter Actions */
+    /* Next / Back Chapter Actions - Thumb-First Full-Width Navigation */
     .chapter-actions {
         margin-top: 14px;
         gap: 8px;
         width: 100%;
+        display: flex;
+        align-items: center;
     }
 
     .btn-step-nav {
-        padding: 11px 16px;
-        font-size: 0.82rem;
-        border-radius: 12px;
-    }
-
-    .btn-next {
-        flex: 1;
-        justify-content: center;
-        padding: 12px 20px;
+        min-height: 48px;
+        padding: 12px 18px;
+        font-size: 0.84rem;
         font-weight: 700;
+        border-radius: 14px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .btn-prev {
-        flex-shrink: 0;
-        padding: 11px 14px;
+        flex: 0 0 auto;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #e2e8f0;
+    }
+
+    .btn-prev[style*="visibility: hidden"],
+    .btn-prev[style*="display: none"] {
+        display: none !important;
+    }
+
+    .btn-next {
+        flex: 1 1 0%;
+        width: 100%;
+        justify-content: center;
+        padding: 12px 20px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        background: linear-gradient(135deg, var(--accent-color) 0%, rgba(30, 27, 75, 0.95) 150%);
+        border: 1px solid var(--accent-color);
+        box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-next:active {
+        transform: scale(0.98);
     }
 
     /* Below-Card Viewer Actions (Glory) */
