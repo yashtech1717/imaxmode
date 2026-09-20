@@ -2517,9 +2517,28 @@ html, body {
 
 .reorder-action-row {
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.reorder-step-nav-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.reorder-step-nav-row .btn-reorder-step {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+}
+
+.reorder-target-nav-row {
+    display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    width: 100%;
 }
 
 .btn-reorder-step {
@@ -3540,18 +3559,682 @@ html, body {
     box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5);
 }
 
-@media (max-width: 600px) {
-    .star-btn {
-        font-size: 2.1rem;
-        padding: 0 2px;
-    }
-    .star-rating-group {
+/* ==========================================================================
+   11. COMPREHENSIVE NEXT-LEVEL MOBILE & TABLET RESPONSIVE SYSTEM
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* 1. Mobile Header & Touch Action Dock */
+    .cinema-header-strip {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: calc(env(safe-area-inset-top, 10px) + 6px) 12px 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
         gap: 8px;
+        background: linear-gradient(180deg, rgba(8, 8, 12, 0.94) 0%, rgba(8, 8, 12, 0.78) 75%, transparent 100%);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        z-index: 70;
+        box-sizing: border-box;
     }
+
+    /* Top Row: Brand & Audio */
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 1;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Hide desktop-only fullscreen button on mobile */
+    .btn-fullscreen {
+        display: none !important;
+    }
+
+    .cinema-brand {
+        font-size: 0.85rem;
+    }
+
+    .brand-title {
+        letter-spacing: 0.14em;
+    }
+
+    .brand-sub {
+        font-size: 0.58rem;
+    }
+
+    .live-status-pill {
+        padding: 3px 7px;
+        font-size: 0.58rem;
+    }
+
+    .status-text {
+        font-size: 0.56rem;
+    }
+
+    .btn-audio {
+        padding: 5px 10px !important;
+        font-size: 0.6rem !important;
+        gap: 5px !important;
+    }
+
+    /* Row 2: Action Dock (Swipeable Touch Bar) */
+    .header-center {
+        display: flex !important;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 2px 2px 4px;
+        flex-wrap: nowrap;
+    }
+
+    .header-center::-webkit-scrollbar {
+        display: none;
+    }
+
+    .header-center .cinema-control-btn {
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding: 5px 11px !important;
+        font-size: 0.62rem !important;
+        letter-spacing: 0.06em;
+        border-radius: 9999px;
+    }
+
+    .user-chip {
+        flex-shrink: 0;
+        padding: 4px 9px;
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+    }
+
+    .btn-logout {
+        flex-shrink: 0;
+        padding: 5px 9px !important;
+        font-size: 0.6rem !important;
+    }
+
+    /* 2. Main Scene Container & Spacing */
+    .scene-container {
+        padding-top: calc(env(safe-area-inset-top, 16px) + 95px) !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 40px) !important;
+        padding-left: 14px;
+        padding-right: 14px;
+        min-height: 100dvh;
+        box-sizing: border-box;
+    }
+
+    .foreground-content {
+        max-width: 100%;
+        padding: 0;
+    }
+
+    /* 3. Fluid Typography & Hero Layer */
+    .giant-backdrop-text {
+        opacity: 0.22;
+    }
+
+    .giant-word {
+        font-size: clamp(4.8rem, 24vw, 7.8rem);
+        letter-spacing: 0.1em;
+        text-indent: 0.1em;
+    }
+
+    .cyber-accent-bar {
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .theme-line {
+        width: 32px;
+    }
+
+    .cyber-badge {
+        font-size: 0.6rem;
+        letter-spacing: 0.18em;
+    }
+
+    .sub-headline {
+        font-size: clamp(1.35rem, 6.2vw, 2.1rem);
+        letter-spacing: 0.22em;
+        text-indent: 0.22em;
+        margin-bottom: 4px;
+        gap: 0.3em;
+    }
+
+    .typing-container {
+        min-height: auto;
+        margin: 4px 0 10px;
+        padding: 6px 10px;
+        max-width: 95vw;
+    }
+
+    .typed-message-wrapper {
+        font-size: 0.88rem;
+        line-height: 1.55;
+    }
+
+    /* 4. Top Circle Number Indicators */
+    .backdrop-dots-track-wrap {
+        width: 100%;
+        max-width: 330px;
+        gap: 8px;
+        margin: 0 auto 4px;
+        padding: 0 4px;
+        box-sizing: border-box;
+    }
+
+    .backdrop-dots-track {
+        width: 100%;
+        max-width: 270px;
+        height: 42px;
+    }
+
+    .b-dots-container {
+        width: 100%;
+    }
+
+    .b-dot {
+        width: 36px;
+        height: 36px;
+    }
+
+    .b-dot-num {
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+
+    .b-dot.active {
+        transform: scale(1.15);
+    }
+
+    .dots-page-nav-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .dots-page-pill {
+        font-size: 0.64rem;
+        letter-spacing: 0.1em;
+        margin-bottom: 10px;
+    }
+
+    /* 5. Chapter Card & Actions */
+    .chapter-stage {
+        width: 100%;
+        max-width: 520px;
+        margin-top: 6px;
+    }
+
+    .chapter-card-outer {
+        border-radius: 20px;
+        width: 100%;
+    }
+
+    .chapter-card {
+        padding: 20px 16px;
+        border-radius: 19px;
+    }
+
+    .chapter-meta {
+        margin-bottom: 8px;
+    }
+
+    .chapter-badge {
+        font-size: 0.66rem;
+        letter-spacing: 0.14em;
+    }
+
+    .chapter-counter {
+        font-size: 0.66rem;
+    }
+
+    .chapter-title {
+        font-size: clamp(1.15rem, 5vw, 1.45rem);
+        margin-bottom: 8px;
+        letter-spacing: 0.04em;
+    }
+
+    .chapter-body {
+        font-size: 0.88rem;
+        line-height: 1.62;
+        color: #cbd5e1;
+    }
+
+    /* Attached Media Trigger Button */
+    .card-media-trigger-wrap {
+        margin: 12px 0 6px;
+        width: 100%;
+    }
+
+    .btn-card-media {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 16px;
+        font-size: 0.72rem;
+        border-radius: 12px;
+    }
+
+    /* Finale Supernova Button */
+    .supernova-ignite-wrap {
+        margin: 12px 0 6px;
+        width: 100%;
+    }
+
+    .btn-supernova {
+        width: 100%;
+        justify-content: center;
+        padding: 13px 20px;
+        font-size: 0.82rem;
+        letter-spacing: 0.14em;
+        border-radius: 14px;
+    }
+
+    /* Next / Back Chapter Actions */
+    .chapter-actions {
+        margin-top: 14px;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .btn-step-nav {
+        padding: 11px 16px;
+        font-size: 0.82rem;
+        border-radius: 12px;
+    }
+
+    .btn-next {
+        flex: 1;
+        justify-content: center;
+        padding: 12px 20px;
+        font-weight: 700;
+    }
+
+    .btn-prev {
+        flex-shrink: 0;
+        padding: 11px 14px;
+    }
+
+    /* Below-Card Viewer Actions (Glory) */
+    .card-reply-trigger-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
+        width: 100%;
+    }
+
+    .btn-card-reply,
+    .btn-card-feedback {
+        width: 100%;
+        justify-content: center;
+        padding: 11px 16px;
+        font-size: 0.74rem;
+        border-radius: 12px;
+        box-sizing: border-box;
+    }
+
+    /* Specs & Pill Footer */
+    .cinematic-specs {
+        margin-top: 14px;
+        gap: 6px;
+        font-size: 0.6rem;
+        letter-spacing: 0.12em;
+        flex-wrap: wrap;
+    }
+
+    .spec-pill {
+        padding: 3px 10px;
+    }
+
+    /* 6. Touch-First Admin Studio Drawer */
+    .studio-drawer {
+        width: 100%;
+        max-width: 100%;
+        height: 94vh;
+        height: 94dvh;
+        top: auto;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 22px 22px 0 0;
+        transform: translateY(100%);
+    }
+
+    .studio-drawer-backdrop.drawer-open .studio-drawer {
+        transform: translateY(0);
+    }
+
+    .studio-drawer-header {
+        padding: 14px 18px;
+    }
+
+    .studio-title {
+        font-size: 0.94rem;
+    }
+
+    .studio-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap;
+        padding: 0 6px;
+        gap: 4px;
+    }
+
+    .studio-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .studio-tab-btn {
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding: 11px 12px;
+        font-size: 0.68rem;
+    }
+
+    .studio-tab-content {
+        padding: 16px 14px calc(env(safe-area-inset-bottom, 16px) + 24px);
+    }
+
+    /* Studio Tab 2: Selector Bar & Add Card */
+    .chapter-selector-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .chapter-selector-bar {
+        display: flex;
+        flex: 1 1 auto;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .btn-chapter-sel {
+        padding: 8px 4px;
+        font-size: 0.65rem;
+    }
+
+    .btn-chapter-sel .sel-num {
+        width: 18px;
+        height: 18px;
+        font-size: 0.58rem;
+    }
+
+    .btn-add-chapter {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        padding: 10px;
+        font-size: 0.72rem;
+    }
+
+    .studio-page-pill {
+        font-size: 0.62rem;
+        margin-top: -2px;
+        margin-bottom: 14px;
+    }
+
+    /* Chapter Reorder Panel on Mobile */
+    .chapter-reorder-box {
+        padding: 12px 12px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+    }
+
+    .reorder-header {
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+
+    .reorder-title {
+        font-size: 0.72rem;
+    }
+
+    .reorder-status-badge {
+        font-size: 0.62rem;
+        padding: 2px 7px;
+    }
+
+    .reorder-desc {
+        font-size: 0.7rem;
+        margin-bottom: 10px;
+        line-height: 1.35;
+    }
+
+    .reorder-action-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .reorder-step-nav-row {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .reorder-step-nav-row .btn-reorder-step {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+        padding: 9px 8px;
+        font-size: 0.66rem;
+    }
+
+    .reorder-target-nav-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .reorder-select-wrap {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .admin-reorder-select {
+        width: 100%;
+        font-size: 0.7rem;
+        padding: 8px 8px;
+    }
+
+    .btn-reorder-apply {
+        padding: 9px 12px;
+        font-size: 0.68rem;
+        flex-shrink: 0;
+    }
+
+    /* Theme Swatches Grid (6 columns) */
+    .theme-swatches-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+        padding: 10px 8px;
+    }
+
+    .theme-swatch-btn {
+        width: 100%;
+        height: 34px;
+        border-radius: 8px;
+    }
+
+    /* Form Action Buttons */
+    .chapter-form-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .btn-studio-save,
+    .btn-studio-delete {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 16px;
+        font-size: 0.76rem;
+        border-radius: 10px;
+    }
+
+    /* 7. Modals on Mobile */
+    .portal-card {
+        padding: 24px 18px;
+        max-width: 92vw;
+        border-radius: 20px;
+        box-sizing: border-box;
+    }
+
+    .biometric-crest {
+        width: 52px;
+        height: 52px;
+        margin-bottom: 10px;
+    }
+
+    .portal-title {
+        font-size: 1.15rem;
+        letter-spacing: 0.12em;
+    }
+
+    .portal-sub {
+        font-size: 0.66rem;
+    }
+
+    .btn-portal-submit {
+        padding: 13px 18px;
+        font-size: 0.74rem;
+        border-radius: 12px;
+    }
+
+    /* Prevent iOS Safari Auto-Zoom on form input focus (Requires font-size: 16px) */
+    .form-group input,
+    .form-group textarea,
+    .form-group select,
+    .password-wrap input,
+    .reply-input-group textarea,
+    .feedback-input-group textarea,
+    .admin-reorder-select {
+        font-size: 16px !important;
+    }
+
+    /* 5-Star Feedback Modal on Mobile */
+    .feedback-viewer-box,
+    .replies-viewer-box,
+    .logs-viewer-box {
+        width: 95vw;
+        max-height: 88vh;
+        max-height: 88dvh;
+        padding: 18px 14px calc(env(safe-area-inset-bottom, 12px) + 12px);
+        border-radius: 20px;
+        box-sizing: border-box;
+    }
+
+    .star-btn {
+        font-size: 2.3rem;
+        padding: 0 4px;
+    }
+
+    .star-rating-group {
+        gap: 6px;
+    }
+
+    .star-descriptor {
+        font-size: 0.78rem;
+    }
+
     .feedback-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+
+    .feedback-stat-card {
+        padding: 8px 6px;
+    }
+
+    .stat-val {
+        font-size: 1.1rem;
+    }
+
+    .stat-lbl {
+        font-size: 0.58rem;
+    }
+
+    .feedback-card-question {
+        font-size: 0.76rem;
+        padding: 8px 10px;
+    }
+
+    /* Media Lightbox */
+    .media-lightbox-content {
+        max-width: 95vw;
+        max-height: 80vh;
+        padding: 10px;
+    }
+
+    .media-lightbox-frame img,
+    .media-lightbox-frame video {
+        max-height: 70vh;
+        border-radius: 12px;
     }
 }
+
+/* Extra Compact Phones (< 380px, e.g. iPhone SE / Galaxy Fold Cover) */
+@media (max-width: 380px) {
+    .giant-word {
+        font-size: 4.2rem;
+    }
+
+    .sub-headline {
+        font-size: 1.25rem;
+        letter-spacing: 0.16em;
+        text-indent: 0.16em;
+    }
+
+    .backdrop-dots-track {
+        max-width: 230px;
+    }
+
+    .b-dot {
+        width: 32px;
+        height: 32px;
+    }
+
+    .b-dot-num {
+        font-size: 0.65rem;
+    }
+
+    .dots-page-nav-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.95rem;
+    }
+
+    .theme-swatches-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
 
 
 

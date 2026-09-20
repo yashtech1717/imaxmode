@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=2.8">
+    <link rel="stylesheet" href="/static/css/style.css?v=3.0">
 </head>
 <body class="theme-crimson">
     <!-- Cinematic VFX Particles Canvas (Floating Embers, Touch Trails, Fireworks & Supernova) -->
@@ -386,21 +386,25 @@
                             Change this chapter's sequence in the journey (e.g. move Card 04 to Position 07). All intermediate chapters will automatically re-index.
                         </p>
                         <div class="reorder-action-row">
-                            <button type="button" class="btn-reorder-step" id="btnMoveCardEarlier" title="Shift 1 position earlier">
-                                ◀ MOVE EARLIER
-                            </button>
-                            <div class="reorder-select-wrap">
-                                <label for="adminCardTargetPosition">MOVE TO POSITION:</label>
-                                <select id="adminCardTargetPosition" class="admin-reorder-select">
-                                    <!-- Populated dynamically via JS -->
-                                </select>
+                            <div class="reorder-step-nav-row">
+                                <button type="button" class="btn-reorder-step" id="btnMoveCardEarlier" title="Shift 1 position earlier">
+                                    ◀ MOVE EARLIER
+                                </button>
+                                <button type="button" class="btn-reorder-step" id="btnMoveCardLater" title="Shift 1 position later">
+                                    MOVE LATER ▶
+                                </button>
                             </div>
-                            <button type="button" class="btn-reorder-apply" id="btnApplyCardReorder">
-                                <span>⇄ APPLY MOVE</span>
-                            </button>
-                            <button type="button" class="btn-reorder-step" id="btnMoveCardLater" title="Shift 1 position later">
-                                MOVE LATER ▶
-                            </button>
+                            <div class="reorder-target-nav-row">
+                                <div class="reorder-select-wrap">
+                                    <label for="adminCardTargetPosition">TO:</label>
+                                    <select id="adminCardTargetPosition" class="admin-reorder-select">
+                                        <!-- Populated dynamically via JS -->
+                                    </select>
+                                </div>
+                                <button type="button" class="btn-reorder-apply" id="btnApplyCardReorder">
+                                    <span>⇄ APPLY MOVE</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -861,7 +865,7 @@
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js?v=2.8"></script>
+    <script src="/static/js/app.js?v=3.0"></script>
 </body>
 </html>
 
