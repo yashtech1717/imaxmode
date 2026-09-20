@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Syncopate:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=3.3">
+    <link rel="stylesheet" href="/static/css/style.css?v=4.0">
 </head>
 <body class="theme-crimson">
     <!-- Theatrical Letterbox Matte Bars (Expands on IMAX Mode) -->
@@ -98,6 +98,14 @@
                 <span class="pulse-spark">★</span>
                 <span>FEEDBACK</span>
             </button>
+            <div class="presence-radar-badge" id="adminPresenceBadge" style="display: none;" title="Real-time Glory Online Activity">
+                <span class="presence-radar-dot"></span>
+                <span class="presence-radar-text" id="adminPresenceText">Glory is viewing Chapter 01</span>
+            </div>
+            <a href="/keepsake" target="_blank" class="cinema-control-btn btn-keepsake" id="adminKeepsakeBtn" style="display: none; text-decoration: none;" title="Export Luxury Printable Storybook">
+                <span class="pulse-spark">📖</span>
+                <span>KEEPSAKE</span>
+            </a>
             <button class="cinema-control-btn btn-logout" id="logoutBtn" title="Log Out">
                 <span>⎋ EXIT</span>
             </button>
@@ -193,13 +201,25 @@
                             </button>
                         </div>
 
-                        <!-- Interactive Supernova Ignite Button (Revealed on Finale Chapter 04) -->
+                        <!-- Interactive Supernova Ignite Button (Revealed on Finale Chapter) -->
                         <div class="supernova-ignite-wrap" id="igniteWrap" style="display: none;">
                             <button class="btn-supernova" id="supernovaBtn">
                                 <span class="supernova-glow-ring"></span>
                                 <span class="supernova-sparkle">✦</span>
                                 <span>IGNITE CELEBRATION</span>
                                 <span class="supernova-sparkle">✦</span>
+                            </button>
+                            <button type="button" class="btn-curtain-call" id="curtainCallBtn" title="Play Post-Credits Theatrical Roll">
+                                <span>🎬 POST-CREDITS SCENE</span>
+                            </button>
+                        </div>
+
+                        <!-- Secret Personal Letter Drawer Trigger -->
+                        <div class="card-secret-note-wrap" id="cardSecretNoteWrap" style="display: none;">
+                            <button type="button" class="btn-card-secret-note" id="cardSecretNoteBtn">
+                                <span class="secret-note-icon">📜</span>
+                                <span>READ PERSONAL LETTER</span>
+                                <span class="secret-note-chevron">▲</span>
                             </button>
                         </div>
 
@@ -519,6 +539,33 @@
                             <div class="upload-progress-bar" id="uploadProgress" style="display: none;">
                                 <div class="upload-progress-fill" id="uploadProgressFill"></div>
                             </div>
+                        <!-- Canvas Atmosphere Preset -->
+                        <div class="form-group">
+                            <label for="adminAtmosphereSelect">ATMOSPHERE CANVAS PRESET</label>
+                            <select id="adminAtmosphereSelect" class="studio-input">
+                                <option value="default">Default (Classic Theatrical Embers)</option>
+                                <option value="cosmic">Cosmic (Stardust Trails & Nebulae)</option>
+                                <option value="petals">Petals (Falling Rose & Gold Petals)</option>
+                                <option value="fireworks">Celebration (Radial Festive Fireworks)</option>
+                            </select>
+                        </div>
+
+                        <!-- Secret Personal Letter / Reflection -->
+                        <div class="form-group">
+                            <label for="adminSecretNote">SECRET PERSONAL LETTER / REFLECTION (OPTIONAL)</label>
+                            <textarea id="adminSecretNote" class="studio-input" rows="3" placeholder="A hidden heartfelt message revealed when Glory clicks 'Read Personal Letter'..."></textarea>
+                        </div>
+
+                        <!-- Special Feature Toggles: Mystery Blur & Draft Mode -->
+                        <div class="form-group-checkboxes" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.82rem; color: #e2e8f0;">
+                                <input type="checkbox" id="adminSecretBlurredCheckbox" style="accent-color: #ffd700; width: 16px; height: 16px;">
+                                <span>✨ Enable "Scratch-to-Reveal" Frosted Blur on Media</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.82rem; color: #e2e8f0;">
+                                <input type="checkbox" id="adminDraftCheckbox" style="accent-color: #ffd700; width: 16px; height: 16px;">
+                                <span>🔒 Draft Mode (Keep hidden from Glory until published)</span>
+                            </label>
                         </div>
 
                         <div class="chapter-form-actions">
@@ -640,8 +687,28 @@
                 </div>
                 <div class="form-group">
                     <label>YOUR BIRTHDAY WISH / MESSAGE FOR YASH</label>
-                    <textarea id="gloryMessageText" rows="5" placeholder="Write your heartfelt message, memory, or wish for Yash here..." required></textarea>
+                    <textarea id="gloryMessageText" rows="4" placeholder="Write your heartfelt message, memory, or wish for Yash here..." required></textarea>
                 </div>
+
+                <!-- Voice Note Audio Recorder -->
+                <div class="voice-note-recorder-panel" id="voiceRecorderPanel">
+                    <div class="voice-recorder-header">
+                        <span>🎙 VOICE NOTE WISH (OPTIONAL)</span>
+                        <span class="voice-duration-label" id="voiceDurationLabel" style="display: none;">00:00</span>
+                    </div>
+                    <div class="voice-recorder-controls">
+                        <button type="button" class="btn-record-voice" id="recordVoiceBtn">
+                            <span class="record-pulse-dot"></span>
+                            <span id="recordVoiceBtnLabel">Tap to Record Voice Note</span>
+                        </button>
+                        <button type="button" class="btn-cancel-voice" id="cancelVoiceBtn" style="display: none;">✕ Discard</button>
+                    </div>
+                    <div class="voice-preview-wrap" id="voicePreviewWrap" style="display: none;">
+                        <audio id="voiceAudioPreview" controls class="voice-audio-element"></audio>
+                    </div>
+                    <input type="hidden" id="gloryVoiceUrl" value="">
+                </div>
+
                 <button type="submit" class="btn-portal-submit" id="glorySubmitBtn">
                     <span class="btn-glow-layer"></span>
                     <span>TRANSMIT TO YASH</span>
@@ -667,6 +734,14 @@
             <div class="media-viewport" id="mediaViewport">
                 <!-- Image Container -->
                 <div class="media-pane-image" id="mediaPaneImage" style="display: none;">
+                    <!-- Mystery Scratch/Tap-to-Reveal Overlay -->
+                    <div class="scratch-reveal-overlay" id="scratchRevealOverlay" style="display: none;">
+                        <div class="scratch-reveal-content">
+                            <span class="scratch-sparkle-icon">✨</span>
+                            <span class="scratch-prompt-title">SURPRISE MEMORY</span>
+                            <span class="scratch-prompt-sub">Tap anywhere to reveal</span>
+                        </div>
+                    </div>
                     <img id="lightboxImage" src="" alt="Memory Photograph">
                 </div>
 
@@ -888,13 +963,62 @@
         </div>
     </div>
 
+    <!-- Floating Live Reactions Dock (Viewer) -->
+    <div class="floating-reaction-dock" id="floatingReactionDock" style="display: none;">
+        <button type="button" class="btn-reaction-pill" data-emoji="💖" title="Send Love">💖</button>
+        <button type="button" class="btn-reaction-pill" data-emoji="✨" title="Pure Magic">✨</button>
+        <button type="button" class="btn-reaction-pill" data-emoji="🎂" title="Happy Birthday">🎂</button>
+        <button type="button" class="btn-reaction-pill" data-emoji="🔥" title="Iconic">🔥</button>
+    </div>
+    <div class="floating-sparks-layer" id="floatingSparksLayer"></div>
+
+    <!-- Secret Letter Slide-Up Velvet Drawer -->
+    <div class="secret-note-drawer" id="secretNoteDrawer" style="display: none;">
+        <div class="secret-note-drawer-backdrop" id="secretNoteDrawerBackdrop"></div>
+        <div class="secret-note-drawer-sheet">
+            <div class="drawer-handle-bar"></div>
+            <div class="secret-note-drawer-header">
+                <span class="secret-note-header-badge">💌 PRIVATE LETTER FROM YASH</span>
+                <button type="button" class="btn-close-secret-note" id="closeSecretNoteBtn">✕</button>
+            </div>
+            <div class="secret-note-drawer-body">
+                <p id="secretNoteDrawerContent"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Theatrical Post-Credits Curtain Call Overlay -->
+    <div class="curtain-call-overlay" id="curtainCallOverlay" style="display: none;">
+        <div class="curtain-call-backdrop"></div>
+        <div class="credits-crawler-container" id="creditsCrawlerContainer">
+            <div class="credits-crawler" id="creditsCrawler">
+                <div class="credits-logo">AURA</div>
+                <div class="credits-edition">CINEMATIC TEXT CANVAS // THE POST-CREDITS SCENE</div>
+                <div class="credits-divider">✦ ✦ ✦</div>
+                <div class="credits-role">WRITTEN & DIRECTED BY</div>
+                <div class="credits-name">YASH</div>
+                <div class="credits-role">INSPIRATION & GUEST OF HONOR</div>
+                <div class="credits-name">GLORY</div>
+                <div class="credits-role">PRODUCTION ARCHITECTURE</div>
+                <div class="credits-name">AURA CINEMATIC 2.0 // IMAX THEATRICAL EDITION</div>
+                <div class="credits-role">DEDICATION</div>
+                <div class="credits-quote">"Wishing you a year of limitless innovation, relentless growth, and next-level milestones. Keep pushing the boundaries of excellence, YASH."</div>
+                <div class="credits-divider">✦ ✦ ✦</div>
+                <div class="credits-actions">
+                    <button type="button" class="btn-credits-action" id="creditsReplayBtn">↺ REPLAY FROM CHAPTER 01</button>
+                    <button type="button" class="btn-credits-action btn-credits-close" id="creditsCloseBtn">✕ CLOSE CREDITS</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div class="aura-toast" id="auraToast">
         <span class="toast-spark">✦</span>
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js?v=3.3"></script>
+    <script src="/static/js/app.js?v=4.0"></script>
 </body>
 </html>
 
