@@ -491,23 +491,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalLength = targetText.length;
         const startTime = performance.now();
 
+        function safeChar(ch) {
+            if (ch === '&') return '&amp;';
+            if (ch === '<') return '&lt;';
+            if (ch === '>') return '&gt;';
+            if (ch === '"') return '&quot;';
+            if (ch === "'") return '&#039;';
+            return ch;
+        }
+
         function updateDecoder(currentTime) {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const revealedChars = Math.floor(progress * totalLength);
 
-            let output = '';
+            let html = '';
             for (let i = 0; i < totalLength; i++) {
                 if (i < revealedChars) {
-                    output += targetText[i];
+                    html += `<span class="dec-char-done">${safeChar(targetText[i])}</span>`;
                 } else if (targetText[i] === ' ') {
-                    output += ' ';
+                    html += ' ';
+                } else if (i === revealedChars) {
+                    const sparkChar = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+                    html += `<span class="dec-char-spark">${sparkChar}</span>`;
                 } else {
-                    output += GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+                    const scrambleChar = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+                    html += `<span class="dec-char-scramble">${scrambleChar}</span>`;
                 }
             }
 
-            element.textContent = output;
+            element.innerHTML = html;
 
             if (progress < 1) {
                 requestAnimationFrame(updateDecoder);

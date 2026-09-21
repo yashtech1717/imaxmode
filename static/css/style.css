@@ -1228,6 +1228,28 @@ body.imax-active .btn-imax .imax-spark {
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
 }
 
+/* Next-Level Scramble Decoder Sparks */
+.dec-char-spark {
+    color: #ffffff !important;
+    text-shadow: 0 0 10px #ffffff, 0 0 24px var(--accent-color), 0 0 36px var(--accent-glow) !important;
+    font-weight: 900 !important;
+    display: inline-block;
+    transform: scale(1.18);
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+.dec-char-scramble {
+    color: var(--accent-color) !important;
+    opacity: 0.85;
+    text-shadow: 0 0 10px var(--accent-glow) !important;
+    font-family: var(--font-tech);
+    -webkit-text-fill-color: var(--accent-color) !important;
+}
+
+.dec-char-done {
+    color: inherit;
+}
+
 /* Action Row */
 .chapter-actions {
     display: flex;
