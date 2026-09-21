@@ -20,7 +20,7 @@
     --accent-glow: rgba(255, 42, 75, 0.65);
     --accent-soft: rgba(255, 42, 75, 0.18);
 
-    --font-giant: 'Syncopate', 'Syne', 'Montserrat', sans-serif;
+    --font-giant: 'Montserrat', sans-serif;
     --font-heading: 'Syne', 'Montserrat', sans-serif;
     --font-display: 'Cinzel', 'Syne', sans-serif;
     --font-tech: 'Outfit', 'Space Grotesk', monospace, sans-serif;
@@ -570,7 +570,7 @@ body.imax-active .btn-imax .imax-spark {
    ========================================================================== */
 .giant-backdrop-text {
     position: fixed;
-    top: 40%;
+    top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 100vw;
@@ -584,20 +584,20 @@ body.imax-active .btn-imax .imax-spark {
 
 .giant-word {
     font-family: var(--font-giant);
-    font-size: clamp(7.5rem, 28vw, 28rem);
-    font-weight: 800;
+    font-size: clamp(8rem, 23vw, 24rem);
+    font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
-    text-indent: 0.14em;
-    line-height: 0.82;
+    letter-spacing: 0.05em;
+    text-indent: 0.05em;
+    line-height: 0.85;
     white-space: nowrap;
-    color: #20222a;
+    color: #22232a;
     -webkit-text-stroke: 0px transparent;
     text-stroke: 0px transparent;
-    text-shadow: 0 10px 40px rgba(0, 0, 0, 0.95);
+    text-shadow: none;
     transition: color 1.2s ease, text-shadow 1.2s ease, transform 1.2s ease;
     position: relative;
-    animation: giantAtmosphericBreathe 10s infinite ease-in-out alternate;
+    user-select: none;
 }
 
 /* When Supernova Celebrates, Giant YASH Blazes into Liquid Gold! */
@@ -620,43 +620,6 @@ body.imax-active .btn-imax .imax-spark {
         0 0 90px rgba(245, 158, 11, 0.65),
         0 0 150px rgba(255, 42, 75, 0.45);
     transform: scale(1.05);
-}
-
-.giant-word::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.04) 50%,
-        transparent 100%
-    );
-    transform: skewX(-25deg);
-    animation: specularSweep 9s infinite ease-in-out;
-}
-
-@keyframes specularSweep {
-    0%, 75% { left: -100%; }
-    100% { left: 160%; }
-}
-
-@keyframes giantAtmosphericBreathe {
-    0% {
-        transform: scale(1) translateY(0);
-        filter: brightness(0.92) contrast(1.05);
-    }
-    50% {
-        transform: scale(1.02) translateY(-4px);
-        filter: brightness(1.15) contrast(1.15);
-    }
-    100% {
-        transform: scale(1) translateY(0);
-        filter: brightness(0.92) contrast(1.05);
-    }
 }
 
 /* ==========================================================================
@@ -1390,13 +1353,14 @@ body.imax-active .btn-imax .imax-spark {
     }
 
     .giant-word {
-        font-size: clamp(5.8rem, 28vw, 9rem);
-        letter-spacing: 0.12em;
-        text-indent: 0.12em;
-        color: #20222a;
+        font-size: clamp(5.5rem, 23vw, 8.5rem);
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        text-indent: 0.05em;
+        color: #22232a;
         -webkit-text-stroke: 0px transparent;
         text-stroke: 0px transparent;
-        text-shadow: 0 8px 30px rgba(0, 0, 0, 0.95);
+        text-shadow: none;
     }
 
     .sub-headline {
@@ -4122,13 +4086,14 @@ body.imax-active .btn-imax .imax-spark {
     }
 
     .giant-word {
-        font-size: clamp(5.4rem, 26vw, 8.5rem);
-        letter-spacing: 0.1em;
-        text-indent: 0.1em;
-        color: #20222a;
+        font-size: clamp(5.4rem, 23vw, 8.5rem);
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        text-indent: 0.05em;
+        color: #22232a;
         -webkit-text-stroke: 0px transparent;
         text-stroke: 0px transparent;
-        text-shadow: 0 8px 30px rgba(0, 0, 0, 0.95);
+        text-shadow: none;
     }
 
     .cyber-accent-bar {
@@ -4696,8 +4661,14 @@ body.imax-active .btn-imax .imax-spark {
 /* Extra Compact Phones (< 380px, e.g. iPhone SE / Galaxy Fold Cover) */
 @media (max-width: 380px) {
     .giant-word {
-        font-size: 4.8rem;
-        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.25);
+        font-size: 4.6rem;
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        text-indent: 0.05em;
+        color: #22232a;
+        -webkit-text-stroke: 0px transparent;
+        text-stroke: 0px transparent;
+        text-shadow: none;
     }
 
     .sub-headline {
