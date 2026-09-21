@@ -222,7 +222,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const mediaPaneVideo = document.getElementById('mediaPaneVideo');
     const lightboxVideo = document.getElementById('lightboxVideo');
     const lightboxVideoSrc = document.getElementById('lightboxVideoSrc');
-    const videoBufferSpinner = document.getElementById('videoBufferSpinner');
+    const videoPreloadOverlay = document.getElementById('videoPreloadOverlay');
+    const videoPreloadBar = document.getElementById('videoPreloadBar');
+    const videoPreloadPct = document.getElementById('videoPreloadPct');
+    const videoPreloadBytes = document.getElementById('videoPreloadBytes');
+    const videoSkipPreloadBtn = document.getElementById('videoSkipPreloadBtn');
+    const videoTapToPlay = document.getElementById('videoTapToPlay');
     const mediaPaneAudio = document.getElementById('mediaPaneAudio');
     const lightboxAudio = document.getElementById('lightboxAudio');
     const lightboxAudioTitle = document.getElementById('lightboxAudioTitle');
@@ -802,6 +807,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 renderDots();
                 populateStudioForm();
+
+                // Pre-download initial chapter videos silently in background
+                if (MILESTONES[0] && (MILESTONES[0].media_type || '').toLowerCase() === 'video' && MILESTONES[0].media_url) {
+                    ensureVideoFullyLoaded(MILESTONES[0].media_url);
+                }
+                if (MILESTONES[1] && (MILESTONES[1].media_type || '').toLowerCase() === 'video' && MILESTONES[1].media_url) {
+                    ensureVideoFullyLoaded(MILESTONES[1].media_url);
+                }
             }
         } catch (err) {
             console.error('Error fetching site content:', err);
@@ -1178,15 +1191,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Intelligent Background Pre-buffering: pre-load the video metadata & initial chunks
-        // so when the user clicks 'WATCH VIDEO', playback begins immediately!
+        // Intelligent Full Video Preloader:
+        // Silently pre-downloads 100% of the video bytes into local RAM before playing,
+        // so when played it NEVER buffers, stutters, or drops out!
         if (mediaType === 'video' && data.media_url) {
-            if (lightboxVideo && lightboxVideo.src !== data.media_url) {
-                lightboxVideo.src = data.media_url;
-                if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
-                lightboxVideo.preload = 'auto';
-                lightboxVideo.load();
-            }
+            ensureVideoFullyLoaded(data.media_url);
+        }
+        const nextData = MILESTONES[stepIndex + 1];
+        if (nextData && (nextData.media_type || '').toLowerCase() === 'video' && nextData.media_url) {
+            ensureVideoFullyLoaded(nextData.media_url);
         }
 
         // Show/Hide Dedicated Below-Card Reply for Viewer (Glory)
@@ -1212,6 +1225,101 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==========================================================================
+    // Video Full Preload & Blob Cache Engine (Ensures 100% complete load before play)
+    // ==========================================================================
+    const videoCache = new Map();
+
+    function formatVideoBytes(bytes) {
+        if (!bytes || isNaN(bytes)) return '0 MB';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    async function ensureVideoFullyLoaded(url, progressCallback) {
+        if (!url || typeof url !== 'string' || !url.startsWith('http')) return url;
+
+        if (videoCache.has(url)) {
+            const entry = videoCache.get(url);
+            if (entry.status === 'ready') {
+                if (progressCallback) progressCallback(100, entry.total, entry.total);
+                return entry.blobUrl;
+            }
+            if (entry.status === 'loading') {
+                if (progressCallback) entry.listeners.push(progressCallback);
+                return entry.promise;
+            }
+        }
+
+        const listeners = [];
+        if (progressCallback) listeners.push(progressCallback);
+
+        const entry = {
+            blobUrl: null,
+            blob: null,
+            status: 'loading',
+            progress: 0,
+            loaded: 0,
+            total: 0,
+            listeners,
+            promise: null
+        };
+
+        const loadPromise = (async () => {
+            try {
+                const res = await fetch(url, { mode: 'cors' });
+                if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+
+                const len = res.headers.get('content-length');
+                const total = len ? parseInt(len, 10) : 0;
+                entry.total = total;
+
+                if (!res.body || !total) {
+                    const blob = await res.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    entry.blob = blob;
+                    entry.blobUrl = blobUrl;
+                    entry.status = 'ready';
+                    entry.progress = 100;
+                    entry.listeners.forEach(cb => cb(100, blob.size, blob.size));
+                    return blobUrl;
+                }
+
+                const reader = res.body.getReader();
+                let received = 0;
+                const chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    entry.loaded = received;
+                    const pct = Math.min(99, Math.round((received / total) * 100));
+                    entry.progress = pct;
+                    entry.listeners.forEach(cb => cb(pct, received, total));
+                }
+
+                const blob = new Blob(chunks, { type: res.headers.get('content-type') || 'video/mp4' });
+                const blobUrl = URL.createObjectURL(blob);
+                entry.blob = blob;
+                entry.blobUrl = blobUrl;
+                entry.status = 'ready';
+                entry.progress = 100;
+                entry.listeners.forEach(cb => cb(100, received, total));
+                return blobUrl;
+            } catch (err) {
+                console.warn('Full preload via fetch failed; falling back to direct stream:', err);
+                entry.status = 'error';
+                return url;
+            }
+        })();
+
+        entry.promise = loadPromise;
+        videoCache.set(url, entry);
+        return loadPromise;
+    }
+
     // Media Button Trigger
     if (cardMediaBtn) {
         cardMediaBtn.addEventListener('click', () => {
@@ -1230,6 +1338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mediaPaneImage) mediaPaneImage.style.display = 'none';
         if (mediaPaneVideo) mediaPaneVideo.style.display = 'none';
         if (mediaPaneAudio) mediaPaneAudio.style.display = 'none';
+        if (videoTapToPlay) videoTapToPlay.style.display = 'none';
 
         if (lightboxVideo) lightboxVideo.pause();
         if (lightboxAudio) lightboxAudio.pause();
@@ -1244,31 +1353,59 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mediaBadgeLabel) mediaBadgeLabel.textContent = '// VIDEO HIGHLIGHT';
             if (mediaPaneVideo) mediaPaneVideo.style.display = 'block';
 
-            if (lightboxVideo) {
-                if (lightboxVideo.src !== data.media_url) {
-                    lightboxVideo.src = data.media_url;
-                    if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
-                    lightboxVideo.preload = 'auto';
+            const videoUrl = data.media_url;
+            const cached = videoCache.get(videoUrl);
+
+            function showTapToPlayPrompt() {
+                if (videoTapToPlay) videoTapToPlay.style.display = 'flex';
+            }
+
+            function startPlaying(src) {
+                if (!lightboxVideo) return;
+                if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
+                if (lightboxVideo.src !== src) {
+                    lightboxVideo.src = src;
+                    if (lightboxVideoSrc) lightboxVideoSrc.src = src;
                     lightboxVideo.load();
                 }
-
-                // Show buffer spinner only if video isn't ready to play yet
-                if (lightboxVideo.readyState < 3) {
-                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
-                } else {
-                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
-                }
-
-                // Autoplay immediately
                 const playPromise = lightboxVideo.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                        if (videoTapToPlay) videoTapToPlay.style.display = 'none';
                     }).catch(() => {
-                        // User gesture needed or browser paused; video is buffered and ready
-                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                        // Unmuted autoplay blocked by browser policy: show glowing Tap To Play button
+                        showTapToPlayPrompt();
                     });
                 }
+            }
+
+            if (cached && cached.status === 'ready' && cached.blobUrl) {
+                // 100% PRE-LOADED IN RAM! Play immediately with ZERO loading!
+                if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
+                startPlaying(cached.blobUrl);
+            } else {
+                // Video is downloading: show full preload progress
+                if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'flex';
+                if (videoPreloadBar) videoPreloadBar.style.width = '0%';
+                if (videoPreloadPct) videoPreloadPct.textContent = '0%';
+                if (videoPreloadBytes) videoPreloadBytes.textContent = 'Buffering 100% into memory for zero loading...';
+
+                // Skip button allows playing progressively immediately if user prefers
+                if (videoSkipPreloadBtn) {
+                    videoSkipPreloadBtn.onclick = () => {
+                        startPlaying(videoUrl);
+                    };
+                }
+
+                ensureVideoFullyLoaded(videoUrl, (pct, loaded, total) => {
+                    if (videoPreloadBar) videoPreloadBar.style.width = `${pct}%`;
+                    if (videoPreloadPct) videoPreloadPct.textContent = `${pct}%`;
+                    if (videoPreloadBytes) {
+                        videoPreloadBytes.textContent = `${formatVideoBytes(loaded)} / ${formatVideoBytes(total)}`;
+                    }
+                }).then(srcToPlay => {
+                    startPlaying(srcToPlay || videoUrl);
+                });
             }
         } else if (mediaType === 'audio') {
             if (mediaBadgeLabel) mediaBadgeLabel.textContent = '// AUDIO RECORDING';
@@ -1287,26 +1424,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeMediaModal() {
         if (!mediaModal) return;
         mediaModal.style.display = 'none';
-        if (lightboxVideo) lightboxVideo.pause();
+        if (lightboxVideo) {
+            lightboxVideo.pause();
+        }
         if (lightboxAudio) lightboxAudio.pause();
-        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
+        if (videoTapToPlay) videoTapToPlay.style.display = 'none';
+    }
+
+    if (videoTapToPlay) {
+        videoTapToPlay.addEventListener('click', () => {
+            if (videoTapToPlay) videoTapToPlay.style.display = 'none';
+            if (lightboxVideo) {
+                lightboxVideo.play();
+            }
+        });
     }
 
     if (lightboxVideo) {
-        lightboxVideo.addEventListener('waiting', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
-        });
         lightboxVideo.addEventListener('playing', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
-        });
-        lightboxVideo.addEventListener('canplay', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
-        });
-        lightboxVideo.addEventListener('canplaythrough', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
-        });
-        lightboxVideo.addEventListener('error', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+            if (videoTapToPlay) videoTapToPlay.style.display = 'none';
+            if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
         });
     }
 
