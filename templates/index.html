@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syncopate:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=4.5">
+    <link rel="stylesheet" href="/static/css/style.css?v=4.6">
 </head>
 <body class="theme-crimson">
     <!-- Theatrical Letterbox Matte Bars (Expands on IMAX Mode) -->
@@ -747,7 +747,11 @@
 
                 <!-- Video Container -->
                 <div class="media-pane-video" id="mediaPaneVideo" style="display: none;">
-                    <video id="lightboxVideo" controls playsinline preload="metadata">
+                    <div class="video-buffer-spinner" id="videoBufferSpinner">
+                        <div class="spinner-laser-ring"></div>
+                        <span class="buffer-text">OPTIMIZING &amp; STREAMING VIDEO...</span>
+                    </div>
+                    <video id="lightboxVideo" controls playsinline webkit-playsinline preload="auto">
                         <source id="lightboxVideoSrc" src="" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
@@ -1018,7 +1022,7 @@
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js?v=4.5"></script>
+    <script src="/static/js/app.js?v=4.6"></script>
 </body>
 </html>
 

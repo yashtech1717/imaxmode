@@ -20,7 +20,7 @@
     --accent-glow: rgba(255, 42, 75, 0.65);
     --accent-soft: rgba(255, 42, 75, 0.18);
 
-    --font-giant: 'Cinzel Decorative', 'Syncopate', 'Montserrat', sans-serif;
+    --font-giant: 'Syncopate', 'Syne', 'Montserrat', sans-serif;
     --font-heading: 'Syne', 'Montserrat', sans-serif;
     --font-display: 'Cinzel', 'Syne', sans-serif;
     --font-tech: 'Outfit', 'Space Grotesk', monospace, sans-serif;
@@ -570,7 +570,7 @@ body.imax-active .btn-imax .imax-spark {
    ========================================================================== */
 .giant-backdrop-text {
     position: fixed;
-    top: 50%;
+    top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 100vw;
@@ -584,24 +584,20 @@ body.imax-active .btn-imax .imax-spark {
 
 .giant-word {
     font-family: var(--font-giant);
-    font-size: clamp(7rem, 25vw, 27rem);
+    font-size: clamp(7.5rem, 28vw, 28rem);
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    text-indent: 0.16em;
-    line-height: 0.85;
+    letter-spacing: 0.14em;
+    text-indent: 0.14em;
+    line-height: 0.82;
     white-space: nowrap;
-    color: rgba(255, 255, 255, 0.055);
-    -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.22);
-    text-stroke: 1.5px rgba(255, 255, 255, 0.22);
-    text-shadow: 
-        0 0 35px var(--accent-soft),
-        0 0 75px var(--accent-soft),
-        0 15px 40px rgba(0, 0, 0, 0.95),
-        0 0 2px rgba(255, 255, 255, 0.3);
-    transition: color 1.2s ease, text-shadow 1.2s ease, transform 1.2s ease, -webkit-text-stroke 1.2s ease;
+    color: #20222a;
+    -webkit-text-stroke: 0px transparent;
+    text-stroke: 0px transparent;
+    text-shadow: 0 10px 40px rgba(0, 0, 0, 0.95);
+    transition: color 1.2s ease, text-shadow 1.2s ease, transform 1.2s ease;
     position: relative;
-    animation: giantAtmosphericBreathe 8s infinite ease-in-out alternate;
+    animation: giantAtmosphericBreathe 10s infinite ease-in-out alternate;
 }
 
 /* When Supernova Celebrates, Giant YASH Blazes into Liquid Gold! */
@@ -1090,9 +1086,9 @@ body.imax-active .btn-imax .imax-spark {
 .chapter-card {
     position: relative;
     z-index: 10;
-    background: rgba(12, 13, 18, 0.64);
-    backdrop-filter: blur(18px) saturate(180%);
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    background: rgba(10, 11, 16, 0.52);
+    backdrop-filter: blur(14px) saturate(180%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 21px;
     padding: clamp(22px, 4vw, 34px);
@@ -1397,7 +1393,10 @@ body.imax-active .btn-imax .imax-spark {
         font-size: clamp(5.8rem, 28vw, 9rem);
         letter-spacing: 0.12em;
         text-indent: 0.12em;
-        -webkit-text-stroke: 1.2px rgba(255, 255, 255, 0.22);
+        color: #20222a;
+        -webkit-text-stroke: 0px transparent;
+        text-stroke: 0px transparent;
+        text-shadow: 0 8px 30px rgba(0, 0, 0, 0.95);
     }
 
     .sub-headline {
@@ -1420,9 +1419,10 @@ body.imax-active .btn-imax .imax-spark {
     .chapter-card {
         padding: 18px 20px;
         border-radius: 16px;
-        background: rgba(12, 13, 18, 0.68);
+        background: rgba(10, 11, 16, 0.58);
         backdrop-filter: blur(14px) saturate(170%);
         -webkit-backdrop-filter: blur(14px) saturate(170%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .chapter-title {
@@ -2375,6 +2375,7 @@ body.imax-active .btn-imax .imax-spark {
 }
 
 .media-pane-video {
+    position: relative;
     width: 100%;
 }
 
@@ -2384,6 +2385,50 @@ body.imax-active .btn-imax .imax-spark {
     border-radius: 12px;
     display: block;
     background: #000000;
+}
+
+/* Video Buffering Overlay Spinner */
+.video-buffer-spinner {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 12px;
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.spinner-laser-ring {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255, 255, 255, 0.12);
+    border-top-color: var(--accent-color);
+    border-right-color: #ffffff;
+    border-radius: 50%;
+    animation: videoSpin 0.75s linear infinite;
+    box-shadow: 0 0 25px var(--accent-glow);
+}
+
+@keyframes videoSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.buffer-text {
+    font-family: var(--font-tech);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: #ffffff;
+    text-shadow: 0 0 12px var(--accent-glow);
+    text-transform: uppercase;
 }
 
 .media-pane-audio {
@@ -4068,21 +4113,22 @@ body.imax-active .btn-imax .imax-spark {
     /* 3. Fluid Typography & Hero Layer */
     .giant-backdrop-text {
         position: fixed;
-        top: 38%;
+        top: 36%;
         left: 50%;
         transform: translate(-50%, -50%);
-        opacity: 0.85;
+        opacity: 1;
         pointer-events: none;
         z-index: 1;
     }
 
     .giant-word {
-        font-size: clamp(5.4rem, 25vw, 8.5rem);
+        font-size: clamp(5.4rem, 26vw, 8.5rem);
         letter-spacing: 0.1em;
         text-indent: 0.1em;
-        -webkit-text-stroke: 1.2px rgba(255, 255, 255, 0.24);
-        text-stroke: 1.2px rgba(255, 255, 255, 0.24);
-        text-shadow: 0 0 25px var(--accent-soft), 0 0 55px var(--accent-soft), 0 10px 30px rgba(0, 0, 0, 0.95);
+        color: #20222a;
+        -webkit-text-stroke: 0px transparent;
+        text-stroke: 0px transparent;
+        text-shadow: 0 8px 30px rgba(0, 0, 0, 0.95);
     }
 
     .cyber-accent-bar {
@@ -4203,7 +4249,7 @@ body.imax-active .btn-imax .imax-spark {
     .chapter-card {
         padding: 18px 16px;
         border-radius: 19px;
-        background: rgba(12, 13, 18, 0.68);
+        background: rgba(10, 11, 16, 0.58);
         backdrop-filter: blur(14px) saturate(170%);
         -webkit-backdrop-filter: blur(14px) saturate(170%);
         border: 1px solid rgba(255, 255, 255, 0.08);

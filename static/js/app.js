@@ -222,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mediaPaneVideo = document.getElementById('mediaPaneVideo');
     const lightboxVideo = document.getElementById('lightboxVideo');
     const lightboxVideoSrc = document.getElementById('lightboxVideoSrc');
+    const videoBufferSpinner = document.getElementById('videoBufferSpinner');
     const mediaPaneAudio = document.getElementById('mediaPaneAudio');
     const lightboxAudio = document.getElementById('lightboxAudio');
     const lightboxAudioTitle = document.getElementById('lightboxAudioTitle');
@@ -1177,6 +1178,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Intelligent Background Pre-buffering: pre-load the video metadata & initial chunks
+        // so when the user clicks 'WATCH VIDEO', playback begins immediately!
+        if (mediaType === 'video' && data.media_url) {
+            if (lightboxVideo && lightboxVideo.src !== data.media_url) {
+                lightboxVideo.src = data.media_url;
+                if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
+                lightboxVideo.preload = 'auto';
+                lightboxVideo.load();
+            }
+        }
+
         // Show/Hide Dedicated Below-Card Reply for Viewer (Glory)
         if (cardReplyTriggerWrap) {
             cardReplyTriggerWrap.style.display = currentRole === 'viewer' ? 'flex' : 'none';
@@ -1230,11 +1242,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mediaPaneImage) mediaPaneImage.style.display = 'block';
         } else if (mediaType === 'video') {
             if (mediaBadgeLabel) mediaBadgeLabel.textContent = '// VIDEO HIGHLIGHT';
-            if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
-            if (lightboxVideo) {
-                lightboxVideo.load();
-            }
             if (mediaPaneVideo) mediaPaneVideo.style.display = 'block';
+
+            if (lightboxVideo) {
+                if (lightboxVideo.src !== data.media_url) {
+                    lightboxVideo.src = data.media_url;
+                    if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
+                    lightboxVideo.preload = 'auto';
+                    lightboxVideo.load();
+                }
+
+                // Show buffer spinner only if video isn't ready to play yet
+                if (lightboxVideo.readyState < 3) {
+                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
+                } else {
+                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                }
+
+                // Autoplay immediately
+                const playPromise = lightboxVideo.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                    }).catch(() => {
+                        // User gesture needed or browser paused; video is buffered and ready
+                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                    });
+                }
+            }
         } else if (mediaType === 'audio') {
             if (mediaBadgeLabel) mediaBadgeLabel.textContent = '// AUDIO RECORDING';
             if (lightboxAudio) lightboxAudio.src = data.media_url;
@@ -1254,6 +1289,25 @@ document.addEventListener('DOMContentLoaded', () => {
         mediaModal.style.display = 'none';
         if (lightboxVideo) lightboxVideo.pause();
         if (lightboxAudio) lightboxAudio.pause();
+        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+    }
+
+    if (lightboxVideo) {
+        lightboxVideo.addEventListener('waiting', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
+        });
+        lightboxVideo.addEventListener('playing', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        });
+        lightboxVideo.addEventListener('canplay', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        });
+        lightboxVideo.addEventListener('canplaythrough', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        });
+        lightboxVideo.addEventListener('error', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        });
     }
 
     if (mediaModalCloseBtn) {
