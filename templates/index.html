@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syncopate:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=4.8">
+    <link rel="stylesheet" href="/static/css/style.css?v=4.9">
 </head>
 <body class="theme-crimson">
     <!-- Theatrical Letterbox Matte Bars (Expands on IMAX Mode) -->
@@ -747,32 +747,21 @@
 
                 <!-- Video Container -->
                 <div class="media-pane-video" id="mediaPaneVideo" style="display: none;">
-                    <!-- Full Video Pre-buffering Progress Overlay -->
-                    <div class="video-preload-overlay" id="videoPreloadOverlay" style="display: none;">
-                        <div class="video-preload-card">
-                            <div class="preload-spinner-ring"></div>
-                            <div class="preload-status-title">PRE-LOADING VIDEO MEMORY</div>
-                            <div class="preload-progress-track">
-                                <div class="preload-progress-fill" id="videoPreloadBar" style="width: 0%;"></div>
-                            </div>
-                            <div class="preload-stats-row">
-                                <span id="videoPreloadPct">0%</span>
-                                <span id="videoPreloadBytes">Buffering 100% into memory for zero loading...</span>
-                            </div>
-                            <button type="button" class="btn-preload-skip" id="videoSkipPreloadBtn">PLAY NOW (STREAMING) ⚡</button>
-                        </div>
+                    <!-- Laser Buffering Indicator (Non-blocking, pointer-events: none) -->
+                    <div class="video-loading-glow" id="videoLoadingGlow" style="display: none;">
+                        <div class="spinner-laser-ring"></div>
+                        <span class="loading-label">BUFFERING VIDEO...</span>
                     </div>
 
-                    <!-- Tap To Play Overlay (Shown if unmuted autoplay is blocked by browser) -->
-                    <button type="button" class="video-tap-to-play" id="videoTapToPlay" style="display: none;">
-                        <div class="play-glow-circle">
-                            <span class="play-triangle">▶</span>
+                    <!-- Glowing Tap-To-Play Button (Appears if unmuted autoplay is blocked by browser) -->
+                    <button type="button" class="video-play-overlay-btn" id="videoPlayOverlayBtn" style="display: none;">
+                        <div class="play-pulse-circle">
+                            <span class="play-icon-triangle">▶</span>
                         </div>
-                        <span class="play-label">CLICK TO PLAY WITH SOUND</span>
+                        <span class="play-overlay-text">CLICK TO PLAY WITH SOUND</span>
                     </button>
 
                     <video id="lightboxVideo" controls playsinline webkit-playsinline preload="auto">
-                        <source id="lightboxVideoSrc" src="" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
                 </div>
@@ -1042,7 +1031,7 @@
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js?v=4.8"></script>
+    <script src="/static/js/app.js?v=4.9"></script>
 </body>
 </html>
 

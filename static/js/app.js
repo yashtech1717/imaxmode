@@ -221,13 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxImage = document.getElementById('lightboxImage');
     const mediaPaneVideo = document.getElementById('mediaPaneVideo');
     const lightboxVideo = document.getElementById('lightboxVideo');
-    const lightboxVideoSrc = document.getElementById('lightboxVideoSrc');
-    const videoPreloadOverlay = document.getElementById('videoPreloadOverlay');
-    const videoPreloadBar = document.getElementById('videoPreloadBar');
-    const videoPreloadPct = document.getElementById('videoPreloadPct');
-    const videoPreloadBytes = document.getElementById('videoPreloadBytes');
-    const videoSkipPreloadBtn = document.getElementById('videoSkipPreloadBtn');
-    const videoTapToPlay = document.getElementById('videoTapToPlay');
+    const videoLoadingGlow = document.getElementById('videoLoadingGlow');
+    const videoPlayOverlayBtn = document.getElementById('videoPlayOverlayBtn');
     const mediaPaneAudio = document.getElementById('mediaPaneAudio');
     const lightboxAudio = document.getElementById('lightboxAudio');
     const lightboxAudioTitle = document.getElementById('lightboxAudioTitle');
@@ -808,13 +803,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderDots();
                 populateStudioForm();
 
-                // Pre-download initial chapter videos silently in background
-                if (MILESTONES[0] && (MILESTONES[0].media_type || '').toLowerCase() === 'video' && MILESTONES[0].media_url) {
-                    ensureVideoFullyLoaded(MILESTONES[0].media_url);
-                }
-                if (MILESTONES[1] && (MILESTONES[1].media_type || '').toLowerCase() === 'video' && MILESTONES[1].media_url) {
-                    ensureVideoFullyLoaded(MILESTONES[1].media_url);
-                }
+                // Pre-buffer chapter videos silently in background into browser cache
+                MILESTONES.forEach(m => {
+                    if ((m.media_type || '').toLowerCase() === 'video' && m.media_url) {
+                        prebufferVideo(m.media_url);
+                    }
+                });
             }
         } catch (err) {
             console.error('Error fetching site content:', err);
@@ -1191,15 +1185,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Intelligent Full Video Preloader:
-        // Silently pre-downloads 100% of the video bytes into local RAM before playing,
-        // so when played it NEVER buffers, stutters, or drops out!
+        // Intelligent Video Pre-buffering:
+        // Pre-caches the active chapter video and the upcoming chapter video into browser cache
         if (mediaType === 'video' && data.media_url) {
-            ensureVideoFullyLoaded(data.media_url);
+            prebufferVideo(data.media_url);
         }
         const nextData = MILESTONES[stepIndex + 1];
         if (nextData && (nextData.media_type || '').toLowerCase() === 'video' && nextData.media_url) {
-            ensureVideoFullyLoaded(nextData.media_url);
+            prebufferVideo(nextData.media_url);
         }
 
         // Show/Hide Dedicated Below-Card Reply for Viewer (Glory)
@@ -1226,98 +1219,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // Video Full Preload & Blob Cache Engine (Ensures 100% complete load before play)
+    // Intelligent Silent Video Pre-buffering & High-Performance Playback Engine
     // ==========================================================================
-    const videoCache = new Map();
+    const prebufferedVideos = new Set();
 
-    function formatVideoBytes(bytes) {
-        if (!bytes || isNaN(bytes)) return '0 MB';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
+    function prebufferVideo(url) {
+        if (!url || typeof url !== 'string' || !url.startsWith('http')) return;
+        if (prebufferedVideos.has(url)) return;
+        prebufferedVideos.add(url);
 
-    async function ensureVideoFullyLoaded(url, progressCallback) {
-        if (!url || typeof url !== 'string' || !url.startsWith('http')) return url;
+        try {
+            // 1. Prime the browser's HTTP/disk cache via <link rel="preload">
+            const preloadLink = document.createElement('link');
+            preloadLink.rel = 'preload';
+            preloadLink.as = 'video';
+            preloadLink.href = url;
+            preloadLink.crossOrigin = 'anonymous';
+            document.head.appendChild(preloadLink);
+        } catch (e) {}
 
-        if (videoCache.has(url)) {
-            const entry = videoCache.get(url);
-            if (entry.status === 'ready') {
-                if (progressCallback) progressCallback(100, entry.total, entry.total);
-                return entry.blobUrl;
-            }
-            if (entry.status === 'loading') {
-                if (progressCallback) entry.listeners.push(progressCallback);
-                return entry.promise;
-            }
-        }
-
-        const listeners = [];
-        if (progressCallback) listeners.push(progressCallback);
-
-        const entry = {
-            blobUrl: null,
-            blob: null,
-            status: 'loading',
-            progress: 0,
-            loaded: 0,
-            total: 0,
-            listeners,
-            promise: null
-        };
-
-        const loadPromise = (async () => {
-            try {
-                const res = await fetch(url, { mode: 'cors' });
-                if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-
-                const len = res.headers.get('content-length');
-                const total = len ? parseInt(len, 10) : 0;
-                entry.total = total;
-
-                if (!res.body || !total) {
-                    const blob = await res.blob();
-                    const blobUrl = URL.createObjectURL(blob);
-                    entry.blob = blob;
-                    entry.blobUrl = blobUrl;
-                    entry.status = 'ready';
-                    entry.progress = 100;
-                    entry.listeners.forEach(cb => cb(100, blob.size, blob.size));
-                    return blobUrl;
-                }
-
-                const reader = res.body.getReader();
-                let received = 0;
-                const chunks = [];
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    received += value.length;
-                    entry.loaded = received;
-                    const pct = Math.min(99, Math.round((received / total) * 100));
-                    entry.progress = pct;
-                    entry.listeners.forEach(cb => cb(pct, received, total));
-                }
-
-                const blob = new Blob(chunks, { type: res.headers.get('content-type') || 'video/mp4' });
-                const blobUrl = URL.createObjectURL(blob);
-                entry.blob = blob;
-                entry.blobUrl = blobUrl;
-                entry.status = 'ready';
-                entry.progress = 100;
-                entry.listeners.forEach(cb => cb(100, received, total));
-                return blobUrl;
-            } catch (err) {
-                console.warn('Full preload via fetch failed; falling back to direct stream:', err);
-                entry.status = 'error';
-                return url;
-            }
-        })();
-
-        entry.promise = loadPromise;
-        videoCache.set(url, entry);
-        return loadPromise;
+        try {
+            // 2. Prime the media hardware decoder buffer with offscreen video element
+            const tempVideo = document.createElement('video');
+            tempVideo.preload = 'auto';
+            tempVideo.muted = true;
+            tempVideo.playsInline = true;
+            tempVideo.src = url;
+            tempVideo.load();
+        } catch (e) {}
     }
 
     // Media Button Trigger
@@ -1338,7 +1267,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mediaPaneImage) mediaPaneImage.style.display = 'none';
         if (mediaPaneVideo) mediaPaneVideo.style.display = 'none';
         if (mediaPaneAudio) mediaPaneAudio.style.display = 'none';
-        if (videoTapToPlay) videoTapToPlay.style.display = 'none';
+        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
 
         if (lightboxVideo) lightboxVideo.pause();
         if (lightboxAudio) lightboxAudio.pause();
@@ -1354,58 +1284,33 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mediaPaneVideo) mediaPaneVideo.style.display = 'block';
 
             const videoUrl = data.media_url;
-            const cached = videoCache.get(videoUrl);
 
-            function showTapToPlayPrompt() {
-                if (videoTapToPlay) videoTapToPlay.style.display = 'flex';
-            }
+            // Show non-blocking buffering indicator while media is loading initial frames
+            if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
+            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
 
-            function startPlaying(src) {
-                if (!lightboxVideo) return;
-                if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
-                if (lightboxVideo.src !== src) {
-                    lightboxVideo.src = src;
-                    if (lightboxVideoSrc) lightboxVideoSrc.src = src;
+            if (lightboxVideo) {
+                const currentSrc = lightboxVideo.currentSrc || lightboxVideo.src;
+                if (!currentSrc || currentSrc !== videoUrl) {
+                    lightboxVideo.src = videoUrl;
                     lightboxVideo.load();
+                } else {
+                    lightboxVideo.currentTime = 0;
                 }
+
+                // SYNCHRONOUS play call within trusted click handler guarantees unmuted audio permission!
                 const playPromise = lightboxVideo.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        if (videoTapToPlay) videoTapToPlay.style.display = 'none';
-                    }).catch(() => {
-                        // Unmuted autoplay blocked by browser policy: show glowing Tap To Play button
-                        showTapToPlayPrompt();
+                        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+                        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+                    }).catch(err => {
+                        console.log('Unmuted autoplay blocked by browser policy:', err);
+                        // Show sleek tap-to-play overlay button so user can start with sound in 1 tap
+                        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+                        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
                     });
                 }
-            }
-
-            if (cached && cached.status === 'ready' && cached.blobUrl) {
-                // 100% PRE-LOADED IN RAM! Play immediately with ZERO loading!
-                if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
-                startPlaying(cached.blobUrl);
-            } else {
-                // Video is downloading: show full preload progress
-                if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'flex';
-                if (videoPreloadBar) videoPreloadBar.style.width = '0%';
-                if (videoPreloadPct) videoPreloadPct.textContent = '0%';
-                if (videoPreloadBytes) videoPreloadBytes.textContent = 'Buffering 100% into memory for zero loading...';
-
-                // Skip button allows playing progressively immediately if user prefers
-                if (videoSkipPreloadBtn) {
-                    videoSkipPreloadBtn.onclick = () => {
-                        startPlaying(videoUrl);
-                    };
-                }
-
-                ensureVideoFullyLoaded(videoUrl, (pct, loaded, total) => {
-                    if (videoPreloadBar) videoPreloadBar.style.width = `${pct}%`;
-                    if (videoPreloadPct) videoPreloadPct.textContent = `${pct}%`;
-                    if (videoPreloadBytes) {
-                        videoPreloadBytes.textContent = `${formatVideoBytes(loaded)} / ${formatVideoBytes(total)}`;
-                    }
-                }).then(srcToPlay => {
-                    startPlaying(srcToPlay || videoUrl);
-                });
             }
         } else if (mediaType === 'audio') {
             if (mediaBadgeLabel) mediaBadgeLabel.textContent = '// AUDIO RECORDING';
@@ -1428,23 +1333,43 @@ document.addEventListener('DOMContentLoaded', () => {
             lightboxVideo.pause();
         }
         if (lightboxAudio) lightboxAudio.pause();
-        if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
-        if (videoTapToPlay) videoTapToPlay.style.display = 'none';
+        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
     }
 
-    if (videoTapToPlay) {
-        videoTapToPlay.addEventListener('click', () => {
-            if (videoTapToPlay) videoTapToPlay.style.display = 'none';
+    if (videoPlayOverlayBtn) {
+        videoPlayOverlayBtn.addEventListener('click', () => {
+            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
             if (lightboxVideo) {
-                lightboxVideo.play();
+                lightboxVideo.play().catch(e => console.error('Play attempt failed:', e));
             }
         });
     }
 
     if (lightboxVideo) {
         lightboxVideo.addEventListener('playing', () => {
-            if (videoTapToPlay) videoTapToPlay.style.display = 'none';
-            if (videoPreloadOverlay) videoPreloadOverlay.style.display = 'none';
+            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+            if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+        });
+
+        lightboxVideo.addEventListener('canplay', () => {
+            if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+        });
+
+        lightboxVideo.addEventListener('timeupdate', () => {
+            if (videoLoadingGlow && videoLoadingGlow.style.display !== 'none') {
+                videoLoadingGlow.style.display = 'none';
+            }
+        });
+
+        lightboxVideo.addEventListener('waiting', () => {
+            if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
+        });
+
+        lightboxVideo.addEventListener('error', () => {
+            console.error('Video error:', lightboxVideo.error);
+            if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+            showToast('Unable to stream video. Please check connection.');
         });
     }
 
