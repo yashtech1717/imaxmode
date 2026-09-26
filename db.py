@@ -210,12 +210,13 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_feedback_responses_created_at ON feedback_responses(created_at DESC);
 
-            -- Advanced Feature Migrations: Atmospheres, Secret Notes, Blur, Drafts, Views, Voice Notes & Presence
+            -- Advanced Feature Migrations: Atmospheres, Secret Notes, Blur, Drafts, Views, Voice Notes, Presence & Permanent Storage Path
             ALTER TABLE chapters ADD COLUMN IF NOT EXISTS atmosphere TEXT DEFAULT 'default';
             ALTER TABLE chapters ADD COLUMN IF NOT EXISTS secret_note TEXT DEFAULT '';
             ALTER TABLE chapters ADD COLUMN IF NOT EXISTS is_secret_blurred BOOLEAN DEFAULT FALSE;
             ALTER TABLE chapters ADD COLUMN IF NOT EXISTS is_draft BOOLEAN DEFAULT FALSE;
             ALTER TABLE chapters ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0;
+            ALTER TABLE chapters ADD COLUMN IF NOT EXISTS storage_path TEXT DEFAULT '';
 
             ALTER TABLE replies ADD COLUMN IF NOT EXISTS voice_url TEXT DEFAULT '';
 
@@ -423,7 +424,7 @@ def get_chapter(step_index: int) -> Optional[Dict[str, Any]]:
 def update_chapter(step_index: int, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     allowed_fields = [
         "theme", "badge", "counter", "title", "body", "media_type", "media_url", "media_name",
-        "atmosphere", "secret_note", "is_secret_blurred", "is_draft"
+        "storage_path", "atmosphere", "secret_note", "is_secret_blurred", "is_draft"
     ]
     set_clauses = []
     values = []
@@ -459,6 +460,7 @@ def add_new_chapter(data: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any
         media_type = (data.get("media_type") if data else None) or "none"
         media_url = (data.get("media_url") if data else None) or ""
         media_name = (data.get("media_name") if data else None) or ""
+        storage_path = (data.get("storage_path") if data else None) or ""
         atmosphere = (data.get("atmosphere") if data else None) or "default"
         secret_note = (data.get("secret_note") if data else None) or ""
         is_secret_blurred = bool(data.get("is_secret_blurred", False)) if data else False
@@ -467,13 +469,13 @@ def add_new_chapter(data: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any
         cursor.execute("""
             INSERT INTO chapters (
                 step_index, theme, badge, counter, title, body,
-                media_type, media_url, media_name, atmosphere,
+                media_type, media_url, media_name, storage_path, atmosphere,
                 secret_note, is_secret_blurred, is_draft
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             next_idx, theme, badge, counter, title, body,
-            media_type, media_url, media_name, atmosphere,
+            media_type, media_url, media_name, storage_path, atmosphere,
             secret_note, is_secret_blurred, is_draft
         ))
 
@@ -965,5 +967,86 @@ def increment_chapter_view(step_index: int) -> int:
     except Exception as err:
         logger.warning("Could not increment view_count for chapter %s in PostgreSQL: %s", step_index, err)
         return 1
+
+
+def repair_and_migrate_media_records() -> Dict[str, Any]:
+    """
+    Inspects and repairs all media records in Supabase PostgreSQL:
+    - Extracts and populates stable 'storage_path' from 'media_url'.
+    - Normalizes media_type ('video', 'image', 'audio').
+    - Ensures all media URLs conform to canonical active Supabase Storage CDN endpoints.
+    - Handles local paths, old Firebase URLs, or malformed URLs.
+    """
+    if not is_db_configured():
+        return {"status": "skipped", "message": "Database not configured"}
+
+    from cloud_storage import get_supabase_url, get_supabase_bucket
+
+    base_url = get_supabase_url()
+    bucket = get_supabase_bucket()
+    repaired_count = 0
+
+    try:
+        with get_db_cursor(commit=True) as cursor:
+            # Ensure column exists
+            cursor.execute("ALTER TABLE chapters ADD COLUMN IF NOT EXISTS storage_path TEXT DEFAULT '';")
+            cursor.execute("SELECT step_index, media_type, media_url, media_name, storage_path FROM chapters ORDER BY step_index ASC;")
+            rows = cursor.fetchall()
+
+            for r in rows:
+                url = (r.get("media_url") or "").strip()
+                spath = (r.get("storage_path") or "").strip()
+                mtype = (r.get("media_type") or "none").lower().strip()
+                idx = r.get("step_index")
+
+                if not url and not spath:
+                    continue
+
+                new_spath = spath
+                new_url = url
+                new_mtype = mtype
+
+                # 1. Extract / sanitize storage_path
+                if not new_spath and url:
+                    if f"/storage/v1/object/public/{bucket}/" in url:
+                        fn = url.split(f"/storage/v1/object/public/{bucket}/")[-1].split("?")[0]
+                        new_spath = f"{bucket}/{fn}"
+                    elif "/storage/v1/object/" in url:
+                        fn = url.split("/storage/v1/object/")[-1].split("/")[-1].split("?")[0]
+                        new_spath = f"{bucket}/{fn}"
+                    elif url.startswith("/static/uploads/"):
+                        fn = os.path.basename(url)
+                        new_spath = f"{bucket}/{fn}"
+
+                # 2. Repair URL if malformed, local, or pointing to old host
+                if new_spath and base_url:
+                    rel_file = new_spath.split("/", 1)[-1] if "/" in new_spath else new_spath
+                    canonical_url = f"{base_url}/storage/v1/object/public/{bucket}/{rel_file}"
+                    if url != canonical_url:
+                        new_url = canonical_url
+
+                # 3. Correct media_type if extension is clearly a video or image
+                test_str = (new_url or new_spath).lower()
+                if any(test_str.endswith(ext) for ext in [".mp4", ".mov", ".webm", ".m4v", ".ogv"]) and new_mtype != "video":
+                    new_mtype = "video"
+                elif any(test_str.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"]) and new_mtype != "image":
+                    new_mtype = "image"
+                elif any(test_str.endswith(ext) for ext in [".mp3", ".wav", ".ogg", ".m4a"]) and new_mtype != "audio":
+                    new_mtype = "audio"
+
+                if new_spath != spath or new_url != url or new_mtype != mtype:
+                    cursor.execute("""
+                        UPDATE chapters
+                        SET storage_path = %s, media_url = %s, media_type = %s, updated_at = CURRENT_TIMESTAMP
+                        WHERE step_index = %s;
+                    """, (new_spath, new_url, new_mtype, idx))
+                    repaired_count += 1
+                    logger.info("Repaired media for Chapter %s: type=%s, path=%s, url=%s", idx, new_mtype, new_spath, new_url)
+
+        logger.info("Media records verification and migration completed. Repaired: %d", repaired_count)
+        return {"status": "success", "repaired_count": repaired_count}
+    except Exception as err:
+        logger.error("Error running repair_and_migrate_media_records: %s", err)
+        return {"status": "error", "message": str(err)}
 
 

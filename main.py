@@ -15,18 +15,25 @@ import logging
 import uuid
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Response
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from diagnostic import run_supabase_diagnostic, format_diagnostic_text, format_diagnostic_html
-from cloud_storage import upload_file, check_storage_health, is_storage_configured
+from cloud_storage import (
+    upload_file,
+    check_storage_health,
+    is_storage_configured,
+    get_storage_stream_info,
+    extract_storage_key
+)
 from db import (
     init_db,
     check_db_health,
     is_db_configured,
+    repair_and_migrate_media_records,
     get_site_config,
     update_site_config,
     get_chapters,
@@ -118,6 +125,7 @@ class ChapterUpdate(BaseModel):
     media_type: Optional[str] = None
     media_url: Optional[str] = None
     media_name: Optional[str] = None
+    storage_path: Optional[str] = None
     atmosphere: Optional[str] = None
     secret_note: Optional[str] = None
     is_secret_blurred: Optional[bool] = None
@@ -174,8 +182,10 @@ def on_startup():
             logger.info("[SUPABASE DATABASE: CONNECTED] Host: %s", db_status.get('host'))
             try:
                 init_db()
+                rep = repair_and_migrate_media_records()
+                logger.info("[SUPABASE MEDIA MIGRATION] Status: %s (Repaired: %s)", rep.get('status'), rep.get('repaired_count', 0))
             except Exception as err:
-                logger.error("Database schema init notice: %s", err)
+                logger.error("Database schema init / media migration notice: %s", err)
         else:
             logger.warning("DATABASE_URL is set but connection check failed: %s", db_status.get('message'))
     else:
@@ -303,7 +313,23 @@ def reorder_chapter_endpoint(payload: ChapterReorder):
 async def upload_media_file(file: UploadFile = File(...)):
     filename = file.filename or "media"
     content_type = file.content_type or ""
-    contents = await file.read()
+
+    MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB limit
+    chunks = []
+    total_read = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total_read += len(chunk)
+        if total_read > MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail="File exceeds maximum allowed upload size of 50 MB."
+            )
+        chunks.append(chunk)
+
+    contents = b"".join(chunks)
 
     result = upload_file(
         file_bytes=contents,
@@ -314,10 +340,98 @@ async def upload_media_file(file: UploadFile = File(...)):
     return {
         "status": "success",
         "url": result["url"],
+        "storage_path": result.get("storage_path", ""),
         "media_type": result["media_type"],
+        "mime_type": result.get("mime_type", ""),
         "filename": result["filename"],
         "is_cloud": result.get("is_cloud", False)
     }
+
+
+# --- HTTP Byte-Range Video Streaming Proxy (RFC 7233) ---
+@app.api_route("/api/media/stream", methods=["GET", "HEAD"])
+@app.api_route("/api/media/stream/{path:path}", methods=["GET", "HEAD"])
+async def stream_media(request: Request, path: Optional[str] = None, url: Optional[str] = None):
+    """
+    High-Performance Byte-Range HTTP Video Streaming Proxy (RFC 7233 compliant).
+    - Supports HTTP 206 Partial Content for byte ranges (instant seeking, scrub, buffering).
+    - Supports HEAD requests for video metadata (Content-Length, Accept-Ranges, Content-Type).
+    - Streams in 64 KB chunks without loading entire files into server RAM.
+    - Relays directly from Supabase Storage for both public and private buckets.
+    """
+    target = path or url or request.query_params.get("url") or request.query_params.get("path") or ""
+    if not target:
+        raise HTTPException(status_code=400, detail="Missing media 'url' or 'path' parameter")
+
+    range_header = request.headers.get("range")
+    status_code, upstream_headers, upstream_res = get_storage_stream_info(
+        url_or_path=target,
+        range_header=range_header,
+        method=request.method
+    )
+
+    response_headers = {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=86400",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+    }
+
+    # Pass through Content-Type (fallback based on extension)
+    ct = upstream_headers.get("content-type") or upstream_headers.get("Content-Type")
+    if not ct or ct == "application/octet-stream":
+        _, ext = os.path.splitext(target.split("?")[0])
+        ext_lower = ext.lower()
+        if ext_lower in [".mp4", ".m4v"]:
+            ct = "video/mp4"
+        elif ext_lower == ".webm":
+            ct = "video/webm"
+        elif ext_lower == ".mov":
+            ct = "video/quicktime"
+        elif ext_lower in [".jpg", ".jpeg"]:
+            ct = "image/jpeg"
+        elif ext_lower == ".png":
+            ct = "image/png"
+        else:
+            ct = "video/mp4"
+    response_headers["Content-Type"] = ct
+
+    # Pass through Content-Length
+    cl = upstream_headers.get("content-length") or upstream_headers.get("Content-Length")
+    if cl:
+        response_headers["Content-Length"] = cl
+
+    # Pass through Content-Range for 206 responses
+    cr = upstream_headers.get("content-range") or upstream_headers.get("Content-Range")
+    if cr:
+        response_headers["Content-Range"] = cr
+
+    if request.method.upper() == "HEAD":
+        return Response(status_code=status_code, headers=response_headers)
+
+    if status_code in [200, 206] and upstream_res is not None:
+        def iter_chunks():
+            try:
+                for chunk in upstream_res.iter_content(chunk_size=65536):
+                    if chunk:
+                        yield chunk
+            finally:
+                upstream_res.close()
+
+        return StreamingResponse(
+            iter_chunks(),
+            status_code=status_code,
+            headers=response_headers
+        )
+
+    if status_code == 416:
+        return Response(status_code=416, headers=response_headers)
+
+    return Response(
+        status_code=status_code,
+        content=getattr(upstream_res, "content", b"") if upstream_res else b"",
+        headers=response_headers
+    )
 
 @app.get("/api/admin/replies")
 def fetch_replies():

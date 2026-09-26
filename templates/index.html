@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syncopate:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=4.9">
+    <link rel="stylesheet" href="/static/css/style.css?v=5.0">
 </head>
 <body class="theme-crimson">
     <!-- Theatrical Letterbox Matte Bars (Expands on IMAX Mode) -->
@@ -519,7 +519,9 @@
                             <div class="editor-media-preview-wrap" id="editorMediaPreviewWrap" style="display: none;">
                                 <div class="editor-preview-frame">
                                     <img id="editorImagePreview" src="" alt="Photo Preview" style="display: none;">
-                                    <video id="editorVideoPreview" controls playsinline preload="metadata" style="display: none;"></video>
+                                    <video id="editorVideoPreview" controls playsinline preload="metadata" style="display: none;">
+                                        <source id="editorVideoPreviewSource" src="" type="video/mp4">
+                                    </video>
                                     <div class="editor-audio-preview" id="editorAudioPreviewBox" style="display: none;">
                                         <span class="audio-note-icon">♫</span>
                                         <audio id="editorAudioPreview" controls preload="metadata"></audio>
@@ -761,8 +763,9 @@
                         <span class="play-overlay-text">CLICK TO PLAY WITH SOUND</span>
                     </button>
 
-                    <video id="lightboxVideo" controls playsinline webkit-playsinline preload="auto">
-                        Your browser does not support the video tag.
+                    <video id="lightboxVideo" controls playsinline webkit-playsinline preload="metadata">
+                        <source id="lightboxVideoSource" src="" type="video/mp4">
+                        Your browser does not support HTML5 video.
                     </video>
                 </div>
 
@@ -1031,7 +1034,7 @@
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js?v=4.9"></script>
+    <script src="/static/js/app.js?v=5.0"></script>
 </body>
 </html>
 

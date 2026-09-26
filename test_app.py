@@ -348,6 +348,50 @@ class TestMockedCloudEndpoints(unittest.TestCase):
         self.assertIn("database_schema", data)
         self.assertIn("storage_bucket", data)
 
+    def test_media_stream_missing_parameter(self):
+        res = self.client.get("/api/media/stream")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Missing media", res.json()["detail"])
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_head(self, mock_stream_info):
+        mock_stream_info.return_value = (
+            200,
+            {"content-type": "video/mp4", "content-length": "2048000"},
+            None
+        )
+        res = self.client.head("/api/media/stream?url=https://supabase.co/storage/v1/object/public/memories/test.mp4")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("accept-ranges"), "bytes")
+        self.assertEqual(res.headers.get("content-type"), "video/mp4")
+        self.assertEqual(res.headers.get("content-length"), "2048000")
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_range_206(self, mock_stream_info):
+        class DummyStream:
+            def iter_content(self, chunk_size=65536):
+                yield b"A" * 1000
+            def close(self):
+                pass
+
+        mock_stream_info.return_value = (
+            206,
+            {
+                "content-type": "video/mp4",
+                "content-length": "1000",
+                "content-range": "bytes 0-999/2048000"
+            },
+            DummyStream()
+        )
+        res = self.client.get(
+            "/api/media/stream/memories/test.mp4",
+            headers={"Range": "bytes=0-999"}
+        )
+        self.assertEqual(res.status_code, 206)
+        self.assertEqual(res.headers.get("accept-ranges"), "bytes")
+        self.assertEqual(res.headers.get("content-range"), "bytes 0-999/2048000")
+        self.assertEqual(len(res.content), 1000)
+
 
 if __name__ == "__main__":
     unittest.main()

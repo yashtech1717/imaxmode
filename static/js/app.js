@@ -221,8 +221,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxImage = document.getElementById('lightboxImage');
     const mediaPaneVideo = document.getElementById('mediaPaneVideo');
     const lightboxVideo = document.getElementById('lightboxVideo');
+    const lightboxVideoSource = document.getElementById('lightboxVideoSource');
     const videoLoadingGlow = document.getElementById('videoLoadingGlow');
     const videoPlayOverlayBtn = document.getElementById('videoPlayOverlayBtn');
+    const editorVideoPreviewSource = document.getElementById('editorVideoPreviewSource');
     const mediaPaneAudio = document.getElementById('mediaPaneAudio');
     const lightboxAudio = document.getElementById('lightboxAudio');
     const lightboxAudioTitle = document.getElementById('lightboxAudioTitle');
@@ -254,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let tempMediaUrl = '';
     let tempMediaType = 'none';
     let tempMediaName = '';
+    let tempStoragePath = '';
 
     // Session State
     let currentUser = localStorage.getItem('aura_user') || null;
@@ -1219,9 +1222,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // Intelligent Silent Video Pre-buffering & High-Performance Playback Engine
+    // Intelligent Video Engine: MIME Detection, Dual-Binding & Resilient Streaming
     // ==========================================================================
     const prebufferedVideos = new Set();
+
+    function getMediaMimeType(url) {
+        if (!url) return 'video/mp4';
+        const clean = url.split('?')[0].toLowerCase();
+        if (clean.endsWith('.webm')) return 'video/webm';
+        if (clean.endsWith('.mov')) return 'video/quicktime';
+        if (clean.endsWith('.m4v') || clean.endsWith('.mp4')) return 'video/mp4';
+        if (clean.endsWith('.ogv')) return 'video/ogg';
+        return 'video/mp4';
+    }
+
+    function setVideoMediaSource(videoEl, sourceEl, rawUrl) {
+        if (!videoEl || !rawUrl) return;
+        const mime = getMediaMimeType(rawUrl);
+        videoEl.pause();
+
+        let srcChild = sourceEl || videoEl.querySelector('source');
+        if (!srcChild) {
+            srcChild = document.createElement('source');
+            videoEl.appendChild(srcChild);
+        }
+
+        srcChild.src = rawUrl;
+        srcChild.type = mime;
+        videoEl.src = rawUrl; // Dual-bind for 100% browser compatibility
+        videoEl.load();
+    }
 
     function prebufferVideo(url) {
         if (!url || typeof url !== 'string' || !url.startsWith('http')) return;
@@ -1241,11 +1271,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // 2. Prime the media hardware decoder buffer with offscreen video element
             const tempVideo = document.createElement('video');
-            tempVideo.preload = 'auto';
+            tempVideo.preload = 'metadata';
             tempVideo.muted = true;
             tempVideo.playsInline = true;
-            tempVideo.src = url;
-            tempVideo.load();
+            setVideoMediaSource(tempVideo, null, url);
         } catch (e) {}
     }
 
@@ -1258,9 +1287,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    let hasFallenBackToProxy = false;
+
     // Media Modal Controls
     function openMediaModal(data) {
         if (!mediaModal) return;
+        hasFallenBackToProxy = false;
         const mediaType = (data.media_type || '').toLowerCase();
 
         // Reset visibility
@@ -1270,7 +1302,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
         if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
 
-        if (lightboxVideo) lightboxVideo.pause();
+        if (lightboxVideo) {
+            lightboxVideo.pause();
+        }
         if (lightboxAudio) lightboxAudio.pause();
 
         if (mediaTitleText) mediaTitleText.textContent = data.title || 'CHAPTER MEDIA';
@@ -1291,9 +1325,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (lightboxVideo) {
                 const currentSrc = lightboxVideo.currentSrc || lightboxVideo.src;
-                if (!currentSrc || currentSrc !== videoUrl) {
-                    lightboxVideo.src = videoUrl;
-                    lightboxVideo.load();
+                if (!currentSrc || (!currentSrc.endsWith(videoUrl) && currentSrc !== videoUrl)) {
+                    setVideoMediaSource(lightboxVideo, lightboxVideoSource, videoUrl);
                 } else {
                     lightboxVideo.currentTime = 0;
                 }
@@ -1348,6 +1381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (lightboxVideo) {
         lightboxVideo.addEventListener('playing', () => {
+            hasFallenBackToProxy = false;
             if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
             if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
         });
@@ -1367,7 +1401,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         lightboxVideo.addEventListener('error', () => {
-            console.error('Video error:', lightboxVideo.error);
+            console.warn('Video playback error event:', lightboxVideo.error);
+            const currentSrc = lightboxVideo.currentSrc || lightboxVideo.src;
+
+            // Auto-Failover to Backend Byte-Range Streaming Proxy if direct CDN playback fails
+            if (!hasFallenBackToProxy && currentSrc && !currentSrc.includes('/api/media/stream')) {
+                hasFallenBackToProxy = true;
+                const activeMilestone = MILESTONES[currentStep];
+                let proxyUrl = '';
+                if (activeMilestone && activeMilestone.storage_path) {
+                    proxyUrl = `/api/media/stream/${encodeURIComponent(activeMilestone.storage_path)}`;
+                } else {
+                    proxyUrl = `/api/media/stream?url=${encodeURIComponent(currentSrc)}`;
+                }
+                console.info('Switching to backend byte-range streaming proxy:', proxyUrl);
+                setVideoMediaSource(lightboxVideo, lightboxVideoSource, proxyUrl);
+                lightboxVideo.play().catch(err => {
+                    console.warn('Playback requires manual user tap after stream switch:', err);
+                    if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+                    if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
+                });
+                return;
+            }
+
             if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
             showToast('Unable to stream video. Please check connection.');
         });
@@ -1688,8 +1744,10 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'none';
         }
         if (editorVideoPreview) {
-            editorVideoPreview.src = '';
             editorVideoPreview.pause();
+            editorVideoPreview.removeAttribute('src');
+            if (editorVideoPreviewSource) editorVideoPreviewSource.removeAttribute('src');
+            editorVideoPreview.load();
             editorVideoPreview.style.display = 'none';
         }
         if (editorAudioPreviewBox) {
@@ -1706,7 +1764,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'video' && url) {
-            editorVideoPreview.src = url;
+            setVideoMediaSource(editorVideoPreview, editorVideoPreviewSource, url);
             editorVideoPreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'audio' && url) {
@@ -1743,6 +1801,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tempMediaUrl = chap.media_url || '';
         tempMediaType = chap.media_type || 'none';
         tempMediaName = chap.media_name || '';
+        tempStoragePath = chap.storage_path || '';
 
         if (tempMediaType !== 'none' && tempMediaUrl) {
             if (currentMediaText) currentMediaText.textContent = `Attached: [${tempMediaType.toUpperCase()}] ${tempMediaName || 'Media File'}`;
@@ -1753,7 +1812,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Live visual preview
-        updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
+        updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName, tempStoragePath);
 
         // Highlight active chapter button (or re-render page if out of current window)
         const activePage = Math.floor(stepIdx / STUDIO_CHAPS_PER_PAGE);
@@ -1991,10 +2050,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     tempMediaUrl = data.url;
                     tempMediaType = data.media_type;
                     tempMediaName = data.filename;
+                    tempStoragePath = data.storage_path || '';
 
                     if (currentMediaText) currentMediaText.textContent = `Attached: [${data.media_type.toUpperCase()}] ${data.filename}`;
                     if (adminRemoveMediaBtn) adminRemoveMediaBtn.style.display = 'inline-flex';
-                    updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
+                    updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName, tempStoragePath);
                     showToast(`Media attached: ${data.filename} ✦`);
                 } else {
                     const errorMsg = data.detail || 'Media upload failed. Ensure Supabase credentials are configured.';
@@ -2018,9 +2078,10 @@ document.addEventListener('DOMContentLoaded', () => {
             tempMediaUrl = '';
             tempMediaType = 'none';
             tempMediaName = '';
+            tempStoragePath = '';
             if (currentMediaText) currentMediaText.textContent = 'No media attached';
             adminRemoveMediaBtn.style.display = 'none';
-            updateEditorMediaPreview('none', '', '');
+            updateEditorMediaPreview('none', '', '', '');
             showToast('Media detached. Click Save to apply changes.');
         });
     }
@@ -2030,6 +2091,7 @@ document.addEventListener('DOMContentLoaded', () => {
         adminChapterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const stepIdx = parseInt(adminCurrentStepIndex.value, 10);
+            const currentChap = MILESTONES[stepIdx] || {};
             const payload = {
                 step_index: stepIdx,
                 badge: adminCardBadge.value.trim(),
@@ -2039,7 +2101,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 theme: adminCardTheme.value,
                 media_type: tempMediaType || 'none',
                 media_url: tempMediaUrl || '',
-                media_name: tempMediaName || ''
+                media_name: tempMediaName || '',
+                storage_path: (tempStoragePath !== undefined && tempStoragePath !== '') ? tempStoragePath : (currentChap.storage_path || '')
             };
 
             try {
