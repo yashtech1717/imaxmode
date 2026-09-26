@@ -221,10 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxImage = document.getElementById('lightboxImage');
     const mediaPaneVideo = document.getElementById('mediaPaneVideo');
     const lightboxVideo = document.getElementById('lightboxVideo');
-    const lightboxVideoSource = document.getElementById('lightboxVideoSource');
     const videoLoadingGlow = document.getElementById('videoLoadingGlow');
     const videoPlayOverlayBtn = document.getElementById('videoPlayOverlayBtn');
-    const editorVideoPreviewSource = document.getElementById('editorVideoPreviewSource');
     const mediaPaneAudio = document.getElementById('mediaPaneAudio');
     const lightboxAudio = document.getElementById('lightboxAudio');
     const lightboxAudioTitle = document.getElementById('lightboxAudioTitle');
@@ -805,13 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 renderDots();
                 populateStudioForm();
-
-                // Pre-buffer chapter videos silently in background into browser cache
-                MILESTONES.forEach(m => {
-                    if ((m.media_type || '').toLowerCase() === 'video' && m.media_url) {
-                        prebufferVideo(m.media_url);
-                    }
-                });
             }
         } catch (err) {
             console.error('Error fetching site content:', err);
@@ -1188,16 +1179,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Intelligent Video Pre-buffering:
-        // Pre-caches the active chapter video and the upcoming chapter video into browser cache
-        if (mediaType === 'video' && data.media_url) {
-            prebufferVideo(data.media_url);
-        }
-        const nextData = MILESTONES[stepIndex + 1];
-        if (nextData && (nextData.media_type || '').toLowerCase() === 'video' && nextData.media_url) {
-            prebufferVideo(nextData.media_url);
-        }
-
         // Show/Hide Dedicated Below-Card Reply for Viewer (Glory)
         if (cardReplyTriggerWrap) {
             cardReplyTriggerWrap.style.display = currentRole === 'viewer' ? 'flex' : 'none';
@@ -1222,10 +1203,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // Intelligent Video Engine: MIME Detection, Dual-Binding & Resilient Streaming
+    // Intelligent Video Engine: MIME Detection & Direct High-Performance Streaming
     // ==========================================================================
-    const prebufferedVideos = new Set();
-
     function getMediaMimeType(url) {
         if (!url) return 'video/mp4';
         const clean = url.split('?')[0].toLowerCase();
@@ -1236,46 +1215,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'video/mp4';
     }
 
-    function setVideoMediaSource(videoEl, sourceEl, rawUrl) {
+    function setVideoMediaSource(videoEl, rawUrl) {
         if (!videoEl || !rawUrl) return;
-        const mime = getMediaMimeType(rawUrl);
-        videoEl.pause();
-
-        let srcChild = sourceEl || videoEl.querySelector('source');
-        if (!srcChild) {
-            srcChild = document.createElement('source');
-            videoEl.appendChild(srcChild);
+        const currentSrc = videoEl.currentSrc || videoEl.src;
+        if (currentSrc && (currentSrc === rawUrl || currentSrc.endsWith(rawUrl))) {
+            return;
         }
-
-        srcChild.src = rawUrl;
-        srcChild.type = mime;
-        videoEl.src = rawUrl; // Dual-bind for 100% browser compatibility
+        videoEl.pause();
+        videoEl.preload = 'metadata';
+        videoEl.src = rawUrl;
         videoEl.load();
-    }
-
-    function prebufferVideo(url) {
-        if (!url || typeof url !== 'string' || !url.startsWith('http')) return;
-        if (prebufferedVideos.has(url)) return;
-        prebufferedVideos.add(url);
-
-        try {
-            // 1. Prime the browser's HTTP/disk cache via <link rel="preload">
-            const preloadLink = document.createElement('link');
-            preloadLink.rel = 'preload';
-            preloadLink.as = 'video';
-            preloadLink.href = url;
-            preloadLink.crossOrigin = 'anonymous';
-            document.head.appendChild(preloadLink);
-        } catch (e) {}
-
-        try {
-            // 2. Prime the media hardware decoder buffer with offscreen video element
-            const tempVideo = document.createElement('video');
-            tempVideo.preload = 'metadata';
-            tempVideo.muted = true;
-            tempVideo.playsInline = true;
-            setVideoMediaSource(tempVideo, null, url);
-        } catch (e) {}
     }
 
     // Media Button Trigger
@@ -1287,12 +1236,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    let hasFallenBackToProxy = false;
-
     // Media Modal Controls
     function openMediaModal(data) {
         if (!mediaModal) return;
-        hasFallenBackToProxy = false;
         const mediaType = (data.media_type || '').toLowerCase();
 
         // Reset visibility
@@ -1319,14 +1265,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const videoUrl = data.media_url;
 
-            // Show non-blocking buffering indicator while media is loading initial frames
-            if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
-            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
-
             if (lightboxVideo) {
                 const currentSrc = lightboxVideo.currentSrc || lightboxVideo.src;
                 if (!currentSrc || (!currentSrc.endsWith(videoUrl) && currentSrc !== videoUrl)) {
-                    setVideoMediaSource(lightboxVideo, lightboxVideoSource, videoUrl);
+                    if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
+                    setVideoMediaSource(lightboxVideo, videoUrl);
                 } else {
                     lightboxVideo.currentTime = 0;
                 }
@@ -1381,7 +1324,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (lightboxVideo) {
         lightboxVideo.addEventListener('playing', () => {
-            hasFallenBackToProxy = false;
             if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
             if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
         });
@@ -1397,35 +1339,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         lightboxVideo.addEventListener('waiting', () => {
-            if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
+            if (!lightboxVideo.paused) {
+                if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
+            }
         });
 
         lightboxVideo.addEventListener('error', () => {
-            console.warn('Video playback error event:', lightboxVideo.error);
-            const currentSrc = lightboxVideo.currentSrc || lightboxVideo.src;
-
-            // Auto-Failover to Backend Byte-Range Streaming Proxy if direct CDN playback fails
-            if (!hasFallenBackToProxy && currentSrc && !currentSrc.includes('/api/media/stream')) {
-                hasFallenBackToProxy = true;
-                const activeMilestone = MILESTONES[currentStep];
-                let proxyUrl = '';
-                if (activeMilestone && activeMilestone.storage_path) {
-                    proxyUrl = `/api/media/stream/${encodeURIComponent(activeMilestone.storage_path)}`;
-                } else {
-                    proxyUrl = `/api/media/stream?url=${encodeURIComponent(currentSrc)}`;
-                }
-                console.info('Switching to backend byte-range streaming proxy:', proxyUrl);
-                setVideoMediaSource(lightboxVideo, lightboxVideoSource, proxyUrl);
-                lightboxVideo.play().catch(err => {
-                    console.warn('Playback requires manual user tap after stream switch:', err);
-                    if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
-                    if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
-                });
+            if (lightboxVideo.error && lightboxVideo.error.code === 1) {
+                // Aborted by user gesture / navigation
                 return;
             }
-
+            console.warn('Video playback error event:', lightboxVideo.error);
             if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
-            showToast('Unable to stream video. Please check connection.');
         });
     }
 
@@ -1746,7 +1671,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editorVideoPreview) {
             editorVideoPreview.pause();
             editorVideoPreview.removeAttribute('src');
-            if (editorVideoPreviewSource) editorVideoPreviewSource.removeAttribute('src');
             editorVideoPreview.load();
             editorVideoPreview.style.display = 'none';
         }
@@ -1764,7 +1688,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'video' && url) {
-            setVideoMediaSource(editorVideoPreview, editorVideoPreviewSource, url);
+            setVideoMediaSource(editorVideoPreview, url);
             editorVideoPreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'audio' && url) {

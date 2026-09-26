@@ -1,5 +1,6 @@
 import os
 import re
+import struct
 from pathlib import Path
 import uuid
 import logging
@@ -26,7 +27,7 @@ ALLOWED_EXTENSIONS = {
         ".mp4": "video/mp4",
         ".webm": "video/webm",
         ".mov": "video/quicktime",
-        ".m4v": "video/mp4",
+        ".m4v": "video/x-m4v",
         ".ogv": "video/ogg"
     },
     "image": {
@@ -214,6 +215,86 @@ def _ensure_supabase_bucket():
         _bucket_verified = True
 
 
+def optimize_mp4_faststart(data: bytes) -> bytes:
+    """
+    Relocates the 'moov' metadata atom to the beginning of the file (right after 'ftyp').
+    Adjusts sample table chunk offsets in 'stco' and 'co64' atoms.
+    Enables instant progressive streaming and byte-range seeking from byte 0.
+    Pure Python, zero external dependencies, 0 CPU transcoding cost.
+    """
+    if len(data) < 16:
+        return data
+
+    pos = 0
+    atoms = []
+    while pos + 8 <= len(data):
+        s = struct.unpack('>I', data[pos:pos+4])[0]
+        tag = data[pos+4:pos+8].decode('latin1', errors='ignore')
+        if s == 1:
+            s = struct.unpack('>Q', data[pos+8:pos+16])[0]
+        elif s == 0:
+            s = len(data) - pos
+        atoms.append((tag, pos, s))
+        if s < 8:
+            break
+        pos += s
+
+    tag_names = [a[0] for a in atoms]
+    if 'moov' not in tag_names or 'mdat' not in tag_names or 'ftyp' not in tag_names:
+        return data
+
+    ftyp = [a for a in atoms if a[0] == 'ftyp'][0]
+    moov = [a for a in atoms if a[0] == 'moov'][0]
+    mdat = [a for a in atoms if a[0] == 'mdat'][0]
+
+    # Already faststart if moov is before mdat
+    if moov[1] < mdat[1]:
+        return data
+
+    original_mdat_offset = mdat[1]
+    new_mdat_offset = ftyp[2] + moov[2]
+    shift = new_mdat_offset - original_mdat_offset
+
+    moov_data = bytearray(data[moov[1]:moov[1]+moov[2]])
+    def walk(p, end):
+        while p + 8 <= end:
+            s = struct.unpack('>I', moov_data[p:p+4])[0]
+            tag = moov_data[p+4:p+8].decode('latin1', errors='ignore')
+            if s == 1:
+                s = struct.unpack('>Q', moov_data[p+8:p+16])[0]
+                h = 16
+            else:
+                h = 8
+            if s == 0:
+                s = end - p
+            if tag in ['trak', 'mdia', 'minf', 'stbl', 'moov', 'edts']:
+                walk(p + h, p + s)
+            elif tag == 'stco':
+                cnt = struct.unpack('>I', moov_data[p+12:p+16])[0]
+                for i in range(cnt):
+                    ep = p + 16 + i * 4
+                    if ep + 4 <= end:
+                        off = struct.unpack('>I', moov_data[ep:ep+4])[0]
+                        moov_data[ep:ep+4] = struct.pack('>I', off + shift)
+            elif tag == 'co64':
+                cnt = struct.unpack('>I', moov_data[p+12:p+16])[0]
+                for i in range(cnt):
+                    ep = p + 16 + i * 8
+                    if ep + 8 <= end:
+                        off = struct.unpack('>Q', moov_data[ep:ep+8])[0]
+                        moov_data[ep:ep+8] = struct.pack('>Q', off + shift)
+            p += s
+    walk(0, len(moov_data))
+
+    other_atoms = [a for a in atoms if a[0] not in ['ftyp', 'moov', 'mdat', 'free']]
+    res = bytearray(data[ftyp[1]:ftyp[1]+ftyp[2]])
+    res.extend(moov_data)
+    res.extend(data[mdat[1]:mdat[1]+mdat[2]])
+    for a in other_atoms:
+        res.extend(data[a[1]:a[1]+a[2]])
+    return bytes(res)
+
+
 def upload_file(file_bytes: bytes, filename: str, content_type: str = "") -> dict:
     """
     Strictly uploads a file to Supabase Storage.
@@ -246,6 +327,13 @@ def upload_file(file_bytes: bytes, filename: str, content_type: str = "") -> dic
 
     clean_name, ext = sanitize_filename(filename)
     media_type, final_mime = detect_media_type_and_mime(filename, content_type, file_bytes[:32])
+
+    # Optimize MP4 container layout for instant byte-range streaming (Faststart: moov before mdat)
+    if media_type == "video" and ext in [".mp4", ".m4v"]:
+        try:
+            file_bytes = optimize_mp4_faststart(file_bytes)
+        except Exception as opt_err:
+            logger.warning("MP4 faststart optimization skipped: %s", opt_err)
 
     _ensure_supabase_bucket()
 
