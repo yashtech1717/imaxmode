@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Syncopate:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=4.7">
+    <link rel="stylesheet" href="/static/css/style.css?v=6.0">
 </head>
 <body class="theme-crimson">
     <!-- Theatrical Letterbox Matte Bars (Expands on IMAX Mode) -->
@@ -747,13 +747,30 @@
 
                 <!-- Video Container -->
                 <div class="media-pane-video" id="mediaPaneVideo" style="display: none;">
-                    <div class="video-buffer-spinner" id="videoBufferSpinner">
+                    <!-- Laser Buffering Indicator (Non-blocking, pointer-events: none) -->
+                    <div class="video-loading-glow" id="videoLoadingGlow" style="display: none;">
                         <div class="spinner-laser-ring"></div>
-                        <span class="buffer-text">OPTIMIZING &amp; STREAMING VIDEO...</span>
+                        <span class="loading-label">BUFFERING VIDEO...</span>
                     </div>
-                    <video id="lightboxVideo" controls playsinline webkit-playsinline preload="auto">
-                        <source id="lightboxVideoSrc" src="" type="video/mp4">
-                        Your browser does not support the video tag.
+
+                    <!-- Glowing Tap-To-Play Button (Appears if unmuted autoplay is blocked by browser) -->
+                    <button type="button" class="video-play-overlay-btn" id="videoPlayOverlayBtn" style="display: none;">
+                        <div class="play-pulse-circle">
+                            <span class="play-icon-triangle">▶</span>
+                        </div>
+                        <span class="play-overlay-text">CLICK TO PLAY WITH SOUND</span>
+                    </button>
+
+                    <!-- Video Playback Error & Failover Recovery Overlay -->
+                    <div class="video-error-overlay" id="videoErrorOverlay" style="display: none;">
+                        <span class="video-error-icon">⚠️</span>
+                        <div class="video-error-title">STREAM RECOVERY</div>
+                        <p class="video-error-msg" id="videoErrorMsg">Video buffering timed out. Click below to reconnect.</p>
+                        <button type="button" class="btn-video-retry" id="videoRetryBtn">↺ RECONNECT STREAM</button>
+                    </div>
+
+                    <video id="lightboxVideo" preload="metadata" playsinline controls webkit-playsinline>
+                        Your browser does not support HTML5 video.
                     </video>
                 </div>
 
@@ -1022,7 +1039,7 @@
         <span class="toast-msg" id="toastMsg">Operation completed</span>
     </div>
 
-    <script src="/static/js/app.js?v=4.7"></script>
+    <script src="/static/js/app.js?v=6.0"></script>
 </body>
 </html>
 

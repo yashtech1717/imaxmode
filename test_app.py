@@ -348,6 +348,173 @@ class TestMockedCloudEndpoints(unittest.TestCase):
         self.assertIn("database_schema", data)
         self.assertIn("storage_bucket", data)
 
+    def test_media_stream_missing_parameter(self):
+        res = self.client.get("/api/media/stream")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Missing media", res.json()["detail"])
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_head(self, mock_stream_info):
+        mock_stream_info.return_value = (
+            200,
+            {"content-type": "video/mp4", "content-length": "2048000"},
+            None
+        )
+        res = self.client.head("/api/media/stream?url=https://supabase.co/storage/v1/object/public/memories/test.mp4")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("accept-ranges"), "bytes")
+        self.assertEqual(res.headers.get("content-type"), "video/mp4")
+        self.assertEqual(res.headers.get("content-length"), "2048000")
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_range_206(self, mock_stream_info):
+        class DummyStream:
+            def iter_content(self, chunk_size=65536):
+                yield b"A" * 1000
+            def close(self):
+                pass
+
+        mock_stream_info.return_value = (
+            206,
+            {
+                "content-type": "video/mp4",
+                "content-length": "1000",
+                "content-range": "bytes 0-999/2048000"
+            },
+            DummyStream()
+        )
+        res = self.client.get(
+            "/api/media/stream/memories/test.mp4",
+            headers={"Range": "bytes=0-999"}
+        )
+        self.assertEqual(res.status_code, 206)
+        self.assertEqual(res.headers.get("accept-ranges"), "bytes")
+        self.assertEqual(res.headers.get("content-range"), "bytes 0-999/2048000")
+        self.assertEqual(len(res.content), 1000)
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_seeking_range_request(self, mock_stream_info):
+        """Verifies seeking to mid-stream byte offset returns 206 Partial Content with correct byte slice."""
+        class DummyStream:
+            def iter_content(self, chunk_size=65536):
+                yield b"B" * 50000
+            def close(self):
+                pass
+
+        mock_stream_info.return_value = (
+            206,
+            {
+                "content-type": "video/mp4",
+                "content-length": "50000",
+                "content-range": "bytes 1000000-1049999/24117248",
+                "etag": '"video-etag-123"'
+            },
+            DummyStream()
+        )
+        res = self.client.get(
+            "/api/media/stream?url=memories/large_video.mp4",
+            headers={"Range": "bytes=1000000-1049999"}
+        )
+        self.assertEqual(res.status_code, 206)
+        self.assertEqual(res.headers.get("accept-ranges"), "bytes")
+        self.assertEqual(res.headers.get("content-range"), "bytes 1000000-1049999/24117248")
+        self.assertEqual(res.headers.get("content-length"), "50000")
+        self.assertEqual(res.headers.get("etag"), '"video-etag-123"')
+        self.assertEqual(len(res.content), 50000)
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_full_get_without_range(self, mock_stream_info):
+        """Verifies full GET requests without Range header return 200 OK with full Content-Length."""
+        class DummyStream:
+            def iter_content(self, chunk_size=65536):
+                yield b"V" * 65536
+                yield b"V" * 34464
+            def close(self):
+                pass
+
+        mock_stream_info.return_value = (
+            200,
+            {
+                "content-type": "video/mp4",
+                "content-length": "100000",
+                "accept-ranges": "bytes",
+                "last-modified": "Wed, 21 Oct 2026 07:28:00 GMT"
+            },
+            DummyStream()
+        )
+        res = self.client.get("/api/media/stream?url=memories/intro.mp4")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("content-type"), "video/mp4")
+        self.assertEqual(res.headers.get("content-length"), "100000")
+        self.assertEqual(res.headers.get("accept-ranges"), "bytes")
+        self.assertEqual(res.headers.get("last-modified"), "Wed, 21 Oct 2026 07:28:00 GMT")
+        self.assertEqual(len(res.content), 100000)
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_416_unsatisfiable_range(self, mock_stream_info):
+        """Verifies out-of-range byte requests return HTTP 416 Range Not Satisfiable."""
+        mock_stream_info.return_value = (
+            416,
+            {"content-range": "bytes */2000000"},
+            None
+        )
+        res = self.client.get(
+            "/api/media/stream?url=memories/test.mp4",
+            headers={"Range": "bytes=9999999-"}
+        )
+        self.assertEqual(res.status_code, 416)
+        self.assertEqual(res.headers.get("accept-ranges"), "bytes")
+
+    @patch("main.get_storage_stream_info")
+    def test_media_stream_large_video_chunking(self, mock_stream_info):
+        """Simulates 24 MB video streaming in multiple 64 KB chunks without memory buffering."""
+        chunk_count = 10
+        chunk_bytes = 65536
+        total_size = chunk_count * chunk_bytes
+
+        class LargeStream:
+            def iter_content(self, chunk_size=65536):
+                for _ in range(chunk_count):
+                    yield b"X" * chunk_bytes
+            def close(self):
+                pass
+
+        mock_stream_info.return_value = (
+            206,
+            {
+                "content-type": "video/mp4",
+                "content-length": str(total_size),
+                "content-range": f"bytes 0-{total_size - 1}/{total_size}"
+            },
+            LargeStream()
+        )
+        res = self.client.get(
+            "/api/media/stream?url=memories/large_inshot.mp4",
+            headers={"Range": f"bytes=0-{total_size - 1}"}
+        )
+        self.assertEqual(res.status_code, 206)
+        self.assertEqual(len(res.content), total_size)
+
+    @patch("main.get_chapters")
+    def test_content_api_generates_stream_url(self, mock_chapters):
+        """Verifies /api/content enriches video chapters with stream_url proxy paths."""
+        mock_chapters.return_value = [
+            {
+                "step_index": 0,
+                "title": "Intro Video",
+                "media_type": "video",
+                "media_url": "https://vkzzdnepmwhsnzmeozxr.supabase.co/storage/v1/object/public/memories/video1.mp4",
+                "storage_path": "memories/video1.mp4"
+            }
+        ]
+        res = self.client.get("/api/content")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        chap = data["chapters"][0]
+        self.assertIn("stream_url", chap)
+        self.assertTrue(chap["stream_url"].startswith("/api/media/stream?url="))
+        self.assertIn("memories", chap["stream_url"])
+
 
 if __name__ == "__main__":
     unittest.main()

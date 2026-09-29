@@ -221,8 +221,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxImage = document.getElementById('lightboxImage');
     const mediaPaneVideo = document.getElementById('mediaPaneVideo');
     const lightboxVideo = document.getElementById('lightboxVideo');
-    const lightboxVideoSrc = document.getElementById('lightboxVideoSrc');
-    const videoBufferSpinner = document.getElementById('videoBufferSpinner');
+    const videoLoadingGlow = document.getElementById('videoLoadingGlow');
+    const videoPlayOverlayBtn = document.getElementById('videoPlayOverlayBtn');
+    const videoErrorOverlay = document.getElementById('videoErrorOverlay');
+    const videoErrorMsg = document.getElementById('videoErrorMsg');
+    const videoRetryBtn = document.getElementById('videoRetryBtn');
     const mediaPaneAudio = document.getElementById('mediaPaneAudio');
     const lightboxAudio = document.getElementById('lightboxAudio');
     const lightboxAudioTitle = document.getElementById('lightboxAudioTitle');
@@ -254,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let tempMediaUrl = '';
     let tempMediaType = 'none';
     let tempMediaName = '';
+    let tempStoragePath = '';
 
     // Session State
     let currentUser = localStorage.getItem('aura_user') || null;
@@ -1178,17 +1182,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Intelligent Background Pre-buffering: pre-load the video metadata & initial chunks
-        // so when the user clicks 'WATCH VIDEO', playback begins immediately!
-        if (mediaType === 'video' && data.media_url) {
-            if (lightboxVideo && lightboxVideo.src !== data.media_url) {
-                lightboxVideo.src = data.media_url;
-                if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
-                lightboxVideo.preload = 'auto';
-                lightboxVideo.load();
-            }
-        }
-
         // Show/Hide Dedicated Below-Card Reply for Viewer (Glory)
         if (cardReplyTriggerWrap) {
             cardReplyTriggerWrap.style.display = currentRole === 'viewer' ? 'flex' : 'none';
@@ -1212,6 +1205,95 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==========================================================================
+    // Intelligent Video Engine: RFC 7233 Streaming, Dual-Source Failover & Buffer Guard
+    // ==========================================================================
+    let currentVideoPrimaryUrl = '';
+    let currentVideoFallbackUrl = '';
+    let hasAttemptedFallback = false;
+    let videoWatchdogTimer = null;
+
+    function clearVideoWatchdog() {
+        if (videoWatchdogTimer) {
+            clearTimeout(videoWatchdogTimer);
+            videoWatchdogTimer = null;
+        }
+    }
+
+    let videoDebounceTimer = null;
+
+    function hideVideoBuffering() {
+        clearVideoWatchdog();
+        if (videoDebounceTimer) {
+            clearTimeout(videoDebounceTimer);
+            videoDebounceTimer = null;
+        }
+        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+    }
+
+    function showVideoBuffering(maxDuration = 4500) {
+        clearVideoWatchdog();
+        if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
+        // Guard: Never leave buffering indicator stuck on screen indefinitely
+        videoWatchdogTimer = setTimeout(() => {
+            hideVideoBuffering();
+            if (lightboxVideo && lightboxVideo.paused && videoPlayOverlayBtn && (!videoErrorOverlay || videoErrorOverlay.style.display === 'none')) {
+                videoPlayOverlayBtn.style.display = 'flex';
+            }
+        }, maxDuration);
+    }
+
+    function scheduleVideoBuffering(debounceMs = 250, maxDuration = 4500) {
+        if (videoDebounceTimer) clearTimeout(videoDebounceTimer);
+        videoDebounceTimer = setTimeout(() => {
+            if (lightboxVideo && !lightboxVideo.paused && lightboxVideo.readyState < 3) {
+                showVideoBuffering(maxDuration);
+            }
+        }, debounceMs);
+    }
+
+    function resolveVideoUrls(data) {
+        if (!data) return { primaryUrl: '', fallbackUrl: '' };
+        const raw = (data.media_url || '').trim();
+        const path = (data.storage_path || '').trim();
+
+        // The RFC 7233 proxy endpoint is the safest, most reliable streaming source:
+        // - Authenticated via server with Supabase key
+        // - No CORS or anonymous access restrictions
+        // - Handles HTTP 206 Partial Content byte ranges smoothly
+        const proxyUrl = `/api/media/stream?url=${encodeURIComponent(path || raw)}`;
+        const directUrl = raw;
+
+        // Use stream_url if provided by backend, else proxyUrl
+        const primary = data.stream_url || proxyUrl;
+        const fallback = (primary === proxyUrl) ? directUrl : proxyUrl;
+
+        return { primaryUrl: primary, fallbackUrl: fallback };
+    }
+
+    function setVideoMediaSource(videoEl, primaryUrl, fallbackUrl = '') {
+        if (!videoEl || !primaryUrl) return;
+
+        currentVideoPrimaryUrl = primaryUrl;
+        currentVideoFallbackUrl = fallbackUrl;
+        hasAttemptedFallback = false;
+
+        const currentSrc = videoEl.currentSrc || videoEl.src || '';
+        if (currentSrc && (currentSrc === primaryUrl || currentSrc.endsWith(primaryUrl))) {
+            return;
+        }
+
+        videoEl.pause();
+        videoEl.setAttribute('preload', 'metadata');
+        videoEl.setAttribute('playsinline', '');
+        videoEl.setAttribute('webkit-playsinline', '');
+        videoEl.setAttribute('controls', '');
+        videoEl.preload = 'metadata';
+        videoEl.playsInline = true;
+        videoEl.controls = true;
+        videoEl.src = primaryUrl;
+    }
+
     // Media Button Trigger
     if (cardMediaBtn) {
         cardMediaBtn.addEventListener('click', () => {
@@ -1226,12 +1308,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!mediaModal) return;
         const mediaType = (data.media_type || '').toLowerCase();
 
+        // Reveal modal immediately so video element has layout dimensions before playback
+        mediaModal.style.display = 'flex';
+        playLaserWhoosh();
+
         // Reset visibility
         if (mediaPaneImage) mediaPaneImage.style.display = 'none';
         if (mediaPaneVideo) mediaPaneVideo.style.display = 'none';
         if (mediaPaneAudio) mediaPaneAudio.style.display = 'none';
+        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+        if (videoErrorOverlay) videoErrorOverlay.style.display = 'none';
+        hideVideoBuffering();
 
-        if (lightboxVideo) lightboxVideo.pause();
+        if (lightboxVideo) {
+            lightboxVideo.pause();
+        }
         if (lightboxAudio) lightboxAudio.pause();
 
         if (mediaTitleText) mediaTitleText.textContent = data.title || 'CHAPTER MEDIA';
@@ -1244,29 +1335,29 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mediaBadgeLabel) mediaBadgeLabel.textContent = '// VIDEO HIGHLIGHT';
             if (mediaPaneVideo) mediaPaneVideo.style.display = 'block';
 
+            const { primaryUrl, fallbackUrl } = resolveVideoUrls(data);
+
             if (lightboxVideo) {
-                if (lightboxVideo.src !== data.media_url) {
-                    lightboxVideo.src = data.media_url;
-                    if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
-                    lightboxVideo.preload = 'auto';
-                    lightboxVideo.load();
-                }
+                const currentSrc = lightboxVideo.currentSrc || lightboxVideo.src || '';
+                const isSame = currentSrc && (currentSrc === primaryUrl || currentSrc.endsWith(primaryUrl));
 
-                // Show buffer spinner only if video isn't ready to play yet
-                if (lightboxVideo.readyState < 3) {
-                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
+                if (!isSame) {
+                    setVideoMediaSource(lightboxVideo, primaryUrl, fallbackUrl);
                 } else {
-                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                    lightboxVideo.currentTime = 0;
                 }
 
-                // Autoplay immediately
+                // SYNCHRONOUS play call within trusted click handler guarantees unmuted audio permission!
                 const playPromise = lightboxVideo.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
-                    }).catch(() => {
-                        // User gesture needed or browser paused; video is buffered and ready
-                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                        hideVideoBuffering();
+                        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+                        if (videoErrorOverlay) videoErrorOverlay.style.display = 'none';
+                    }).catch(err => {
+                        console.log('Unmuted autoplay deferred by browser policy:', err);
+                        hideVideoBuffering();
+                        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
                     });
                 }
             }
@@ -1279,34 +1370,122 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (mediaPaneAudio) mediaPaneAudio.style.display = 'flex';
         }
-
-        mediaModal.style.display = 'flex';
-        playLaserWhoosh();
     }
 
     function closeMediaModal() {
         if (!mediaModal) return;
         mediaModal.style.display = 'none';
-        if (lightboxVideo) lightboxVideo.pause();
+        hideVideoBuffering();
+        clearVideoWatchdog();
+        if (lightboxVideo) {
+            lightboxVideo.pause();
+            lightboxVideo.removeAttribute('src');
+            lightboxVideo.load();
+        }
         if (lightboxAudio) lightboxAudio.pause();
-        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+        if (videoErrorOverlay) videoErrorOverlay.style.display = 'none';
+    }
+
+    if (videoPlayOverlayBtn) {
+        videoPlayOverlayBtn.addEventListener('click', () => {
+            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+            if (lightboxVideo) {
+                lightboxVideo.play().then(() => {
+                    hideVideoBuffering();
+                }).catch(e => {
+                    console.error('Play attempt failed:', e);
+                    hideVideoBuffering();
+                    if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
+                });
+            }
+        });
+    }
+
+    if (videoRetryBtn) {
+        videoRetryBtn.addEventListener('click', () => {
+            if (videoErrorOverlay) videoErrorOverlay.style.display = 'none';
+            showVideoBuffering(5000);
+            const data = MILESTONES[currentStep];
+            if (data && lightboxVideo) {
+                hasAttemptedFallback = false;
+                const { primaryUrl, fallbackUrl } = resolveVideoUrls(data);
+                const retryUrl = (lightboxVideo.src === primaryUrl && fallbackUrl) ? fallbackUrl : primaryUrl;
+                setVideoMediaSource(lightboxVideo, retryUrl, primaryUrl);
+                lightboxVideo.play().catch(() => {
+                    hideVideoBuffering();
+                    if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
+                });
+            }
+        });
     }
 
     if (lightboxVideo) {
-        lightboxVideo.addEventListener('waiting', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
-        });
         lightboxVideo.addEventListener('playing', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+            hideVideoBuffering();
+            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+            if (videoErrorOverlay) videoErrorOverlay.style.display = 'none';
         });
+
         lightboxVideo.addEventListener('canplay', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+            hideVideoBuffering();
         });
-        lightboxVideo.addEventListener('canplaythrough', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+
+        lightboxVideo.addEventListener('loadeddata', () => {
+            hideVideoBuffering();
         });
+
+        lightboxVideo.addEventListener('progress', () => {
+            if (lightboxVideo.buffered.length > 0 && lightboxVideo.currentTime > 0) {
+                const end = lightboxVideo.buffered.end(lightboxVideo.buffered.length - 1);
+                if (end > lightboxVideo.currentTime + 0.5) {
+                    hideVideoBuffering();
+                }
+            }
+        });
+
+        lightboxVideo.addEventListener('timeupdate', () => {
+            if (videoLoadingGlow && videoLoadingGlow.style.display !== 'none') {
+                hideVideoBuffering();
+            }
+        });
+
+        lightboxVideo.addEventListener('waiting', () => {
+            if (!lightboxVideo.paused) {
+                scheduleVideoBuffering(250, 4500);
+            }
+        });
+
         lightboxVideo.addEventListener('error', () => {
-            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+            if (lightboxVideo.error && lightboxVideo.error.code === 1) {
+                // Aborted by user gesture / navigation
+                return;
+            }
+            console.warn('Video playback error encountered:', lightboxVideo.error);
+
+            // Attempt automatic failover to alternative stream URL
+            if (!hasAttemptedFallback && currentVideoFallbackUrl && currentVideoFallbackUrl !== lightboxVideo.src) {
+                console.info('Switching to failover stream URL:', currentVideoFallbackUrl);
+                hasAttemptedFallback = true;
+                showVideoBuffering(5000);
+                lightboxVideo.pause();
+                lightboxVideo.src = currentVideoFallbackUrl;
+                lightboxVideo.play().catch(err => {
+                    console.log('Failover play notice:', err);
+                    hideVideoBuffering();
+                    if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
+                });
+                return;
+            }
+
+            hideVideoBuffering();
+            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
+            if (videoErrorOverlay) {
+                if (videoErrorMsg) {
+                    videoErrorMsg.textContent = 'Could not stream media directly from storage. Click below to reconnect.';
+                }
+                videoErrorOverlay.style.display = 'flex';
+            }
         });
     }
 
@@ -1625,8 +1804,9 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'none';
         }
         if (editorVideoPreview) {
-            editorVideoPreview.src = '';
             editorVideoPreview.pause();
+            editorVideoPreview.removeAttribute('src');
+            editorVideoPreview.load();
             editorVideoPreview.style.display = 'none';
         }
         if (editorAudioPreviewBox) {
@@ -1643,7 +1823,8 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'video' && url) {
-            editorVideoPreview.src = url;
+            const streamUrl = `/api/media/stream?url=${encodeURIComponent(url)}`;
+            setVideoMediaSource(editorVideoPreview, streamUrl, url);
             editorVideoPreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'audio' && url) {
@@ -1680,6 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tempMediaUrl = chap.media_url || '';
         tempMediaType = chap.media_type || 'none';
         tempMediaName = chap.media_name || '';
+        tempStoragePath = chap.storage_path || '';
 
         if (tempMediaType !== 'none' && tempMediaUrl) {
             if (currentMediaText) currentMediaText.textContent = `Attached: [${tempMediaType.toUpperCase()}] ${tempMediaName || 'Media File'}`;
@@ -1690,7 +1872,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Live visual preview
-        updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
+        updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName, tempStoragePath);
 
         // Highlight active chapter button (or re-render page if out of current window)
         const activePage = Math.floor(stepIdx / STUDIO_CHAPS_PER_PAGE);
@@ -1928,10 +2110,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     tempMediaUrl = data.url;
                     tempMediaType = data.media_type;
                     tempMediaName = data.filename;
+                    tempStoragePath = data.storage_path || '';
 
                     if (currentMediaText) currentMediaText.textContent = `Attached: [${data.media_type.toUpperCase()}] ${data.filename}`;
                     if (adminRemoveMediaBtn) adminRemoveMediaBtn.style.display = 'inline-flex';
-                    updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
+                    updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName, tempStoragePath);
                     showToast(`Media attached: ${data.filename} ✦`);
                 } else {
                     const errorMsg = data.detail || 'Media upload failed. Ensure Supabase credentials are configured.';
@@ -1955,9 +2138,10 @@ document.addEventListener('DOMContentLoaded', () => {
             tempMediaUrl = '';
             tempMediaType = 'none';
             tempMediaName = '';
+            tempStoragePath = '';
             if (currentMediaText) currentMediaText.textContent = 'No media attached';
             adminRemoveMediaBtn.style.display = 'none';
-            updateEditorMediaPreview('none', '', '');
+            updateEditorMediaPreview('none', '', '', '');
             showToast('Media detached. Click Save to apply changes.');
         });
     }
@@ -1967,6 +2151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         adminChapterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const stepIdx = parseInt(adminCurrentStepIndex.value, 10);
+            const currentChap = MILESTONES[stepIdx] || {};
             const payload = {
                 step_index: stepIdx,
                 badge: adminCardBadge.value.trim(),
@@ -1976,7 +2161,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 theme: adminCardTheme.value,
                 media_type: tempMediaType || 'none',
                 media_url: tempMediaUrl || '',
-                media_name: tempMediaName || ''
+                media_name: tempMediaName || '',
+                storage_path: (tempStoragePath !== undefined && tempStoragePath !== '') ? tempStoragePath : (currentChap.storage_path || '')
             };
 
             try {
