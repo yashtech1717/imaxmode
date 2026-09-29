@@ -2351,115 +2351,48 @@ body.imax-active .btn-imax .imax-spark {
     background: #000000;
 }
 
-/* Video Laser Buffering Indicator (Non-blocking: pointer-events: none) */
-.video-loading-glow {
+/* Video Buffering Overlay Spinner */
+.video-buffer-spinner {
     position: absolute;
     inset: 0;
-    margin: auto;
-    width: 100%;
-    height: 100%;
     display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    pointer-events: none;
-    z-index: 15;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    gap: 14px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-radius: 12px;
-    transition: opacity 0.25s ease;
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
 }
 
 .spinner-laser-ring {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
     border: 3px solid rgba(255, 255, 255, 0.12);
     border-top-color: var(--accent-color);
     border-right-color: #ffffff;
     border-radius: 50%;
-    animation: videoSpinRing 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-    box-shadow: 0 0 25px var(--accent-glow), inset 0 0 15px var(--accent-soft);
+    animation: videoSpin 0.75s linear infinite;
+    box-shadow: 0 0 25px var(--accent-glow);
 }
 
-@keyframes videoSpinRing {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+@keyframes videoSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-.video-loading-glow .loading-label {
+.buffer-text {
     font-family: var(--font-tech);
-    font-size: 0.76rem;
-    font-weight: 800;
-    letter-spacing: 0.2em;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
     color: #ffffff;
     text-shadow: 0 0 12px var(--accent-glow);
     text-transform: uppercase;
-}
-
-/* Tap To Play Overlay (Appears if unmuted autoplay is blocked by browser policy) */
-.video-play-overlay-btn {
-    position: absolute;
-    inset: 0;
-    margin: auto;
-    width: 100%;
-    height: 100%;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    background: rgba(0, 0, 0, 0.55);
-    border: none;
-    border-radius: 12px;
-    z-index: 20;
-    cursor: pointer;
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    transition: background 0.2s ease, opacity 0.25s ease;
-}
-
-.video-play-overlay-btn:hover {
-    background: rgba(0, 0, 0, 0.35);
-}
-
-.play-pulse-circle {
-    width: 76px;
-    height: 76px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-color), #ffffff);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 40px var(--accent-glow), 0 0 80px var(--accent-soft);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    animation: playBtnPulse 2s ease-in-out infinite;
-}
-
-@keyframes playBtnPulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 35px var(--accent-glow); }
-    50% { transform: scale(1.06); box-shadow: 0 0 60px var(--accent-glow), 0 0 100px var(--accent-soft); }
-}
-
-.video-play-overlay-btn:hover .play-pulse-circle {
-    transform: scale(1.14);
-}
-
-.play-icon-triangle {
-    font-size: 2rem;
-    color: #000000;
-    margin-left: 5px;
-    line-height: 1;
-}
-
-.play-overlay-text {
-    font-family: var(--font-tech);
-    font-size: 0.8rem;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-    color: #ffffff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9), 0 0 15px var(--accent-glow);
 }
 
 .media-pane-audio {

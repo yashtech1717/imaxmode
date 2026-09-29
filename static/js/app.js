@@ -221,8 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxImage = document.getElementById('lightboxImage');
     const mediaPaneVideo = document.getElementById('mediaPaneVideo');
     const lightboxVideo = document.getElementById('lightboxVideo');
-    const videoLoadingGlow = document.getElementById('videoLoadingGlow');
-    const videoPlayOverlayBtn = document.getElementById('videoPlayOverlayBtn');
+    const lightboxVideoSrc = document.getElementById('lightboxVideoSrc');
+    const videoBufferSpinner = document.getElementById('videoBufferSpinner');
     const mediaPaneAudio = document.getElementById('mediaPaneAudio');
     const lightboxAudio = document.getElementById('lightboxAudio');
     const lightboxAudioTitle = document.getElementById('lightboxAudioTitle');
@@ -254,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let tempMediaUrl = '';
     let tempMediaType = 'none';
     let tempMediaName = '';
-    let tempStoragePath = '';
 
     // Session State
     let currentUser = localStorage.getItem('aura_user') || null;
@@ -1179,6 +1178,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Intelligent Background Pre-buffering: pre-load the video metadata & initial chunks
+        // so when the user clicks 'WATCH VIDEO', playback begins immediately!
+        if (mediaType === 'video' && data.media_url) {
+            if (lightboxVideo && lightboxVideo.src !== data.media_url) {
+                lightboxVideo.src = data.media_url;
+                if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
+                lightboxVideo.preload = 'auto';
+                lightboxVideo.load();
+            }
+        }
+
         // Show/Hide Dedicated Below-Card Reply for Viewer (Glory)
         if (cardReplyTriggerWrap) {
             cardReplyTriggerWrap.style.display = currentRole === 'viewer' ? 'flex' : 'none';
@@ -1202,31 +1212,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================================================
-    // Intelligent Video Engine: MIME Detection & Direct High-Performance Streaming
-    // ==========================================================================
-    function getMediaMimeType(url) {
-        if (!url) return 'video/mp4';
-        const clean = url.split('?')[0].toLowerCase();
-        if (clean.endsWith('.webm')) return 'video/webm';
-        if (clean.endsWith('.mov')) return 'video/quicktime';
-        if (clean.endsWith('.m4v') || clean.endsWith('.mp4')) return 'video/mp4';
-        if (clean.endsWith('.ogv')) return 'video/ogg';
-        return 'video/mp4';
-    }
-
-    function setVideoMediaSource(videoEl, rawUrl) {
-        if (!videoEl || !rawUrl) return;
-        const currentSrc = videoEl.currentSrc || videoEl.src;
-        if (currentSrc && (currentSrc === rawUrl || currentSrc.endsWith(rawUrl))) {
-            return;
-        }
-        videoEl.pause();
-        videoEl.preload = 'metadata';
-        videoEl.src = rawUrl;
-        videoEl.load();
-    }
-
     // Media Button Trigger
     if (cardMediaBtn) {
         cardMediaBtn.addEventListener('click', () => {
@@ -1245,12 +1230,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mediaPaneImage) mediaPaneImage.style.display = 'none';
         if (mediaPaneVideo) mediaPaneVideo.style.display = 'none';
         if (mediaPaneAudio) mediaPaneAudio.style.display = 'none';
-        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
-        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
 
-        if (lightboxVideo) {
-            lightboxVideo.pause();
-        }
+        if (lightboxVideo) lightboxVideo.pause();
         if (lightboxAudio) lightboxAudio.pause();
 
         if (mediaTitleText) mediaTitleText.textContent = data.title || 'CHAPTER MEDIA';
@@ -1263,28 +1244,29 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mediaBadgeLabel) mediaBadgeLabel.textContent = '// VIDEO HIGHLIGHT';
             if (mediaPaneVideo) mediaPaneVideo.style.display = 'block';
 
-            const videoUrl = data.media_url;
-
             if (lightboxVideo) {
-                const currentSrc = lightboxVideo.currentSrc || lightboxVideo.src;
-                if (!currentSrc || (!currentSrc.endsWith(videoUrl) && currentSrc !== videoUrl)) {
-                    if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
-                    setVideoMediaSource(lightboxVideo, videoUrl);
-                } else {
-                    lightboxVideo.currentTime = 0;
+                if (lightboxVideo.src !== data.media_url) {
+                    lightboxVideo.src = data.media_url;
+                    if (lightboxVideoSrc) lightboxVideoSrc.src = data.media_url;
+                    lightboxVideo.preload = 'auto';
+                    lightboxVideo.load();
                 }
 
-                // SYNCHRONOUS play call within trusted click handler guarantees unmuted audio permission!
+                // Show buffer spinner only if video isn't ready to play yet
+                if (lightboxVideo.readyState < 3) {
+                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
+                } else {
+                    if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                }
+
+                // Autoplay immediately
                 const playPromise = lightboxVideo.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
-                        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
-                    }).catch(err => {
-                        console.log('Unmuted autoplay blocked by browser policy:', err);
-                        // Show sleek tap-to-play overlay button so user can start with sound in 1 tap
-                        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
-                        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'flex';
+                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+                    }).catch(() => {
+                        // User gesture needed or browser paused; video is buffered and ready
+                        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
                     });
                 }
             }
@@ -1305,52 +1287,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeMediaModal() {
         if (!mediaModal) return;
         mediaModal.style.display = 'none';
-        if (lightboxVideo) {
-            lightboxVideo.pause();
-        }
+        if (lightboxVideo) lightboxVideo.pause();
         if (lightboxAudio) lightboxAudio.pause();
-        if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
-        if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
-    }
-
-    if (videoPlayOverlayBtn) {
-        videoPlayOverlayBtn.addEventListener('click', () => {
-            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
-            if (lightboxVideo) {
-                lightboxVideo.play().catch(e => console.error('Play attempt failed:', e));
-            }
-        });
+        if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
     }
 
     if (lightboxVideo) {
-        lightboxVideo.addEventListener('playing', () => {
-            if (videoPlayOverlayBtn) videoPlayOverlayBtn.style.display = 'none';
-            if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
-        });
-
-        lightboxVideo.addEventListener('canplay', () => {
-            if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
-        });
-
-        lightboxVideo.addEventListener('timeupdate', () => {
-            if (videoLoadingGlow && videoLoadingGlow.style.display !== 'none') {
-                videoLoadingGlow.style.display = 'none';
-            }
-        });
-
         lightboxVideo.addEventListener('waiting', () => {
-            if (!lightboxVideo.paused) {
-                if (videoLoadingGlow) videoLoadingGlow.style.display = 'flex';
-            }
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'flex';
         });
-
+        lightboxVideo.addEventListener('playing', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        });
+        lightboxVideo.addEventListener('canplay', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        });
+        lightboxVideo.addEventListener('canplaythrough', () => {
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
+        });
         lightboxVideo.addEventListener('error', () => {
-            if (lightboxVideo.error && lightboxVideo.error.code === 1) {
-                // Aborted by user gesture / navigation
-                return;
-            }
-            console.warn('Video playback error event:', lightboxVideo.error);
-            if (videoLoadingGlow) videoLoadingGlow.style.display = 'none';
+            if (videoBufferSpinner) videoBufferSpinner.style.display = 'none';
         });
     }
 
@@ -1669,9 +1625,8 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'none';
         }
         if (editorVideoPreview) {
+            editorVideoPreview.src = '';
             editorVideoPreview.pause();
-            editorVideoPreview.removeAttribute('src');
-            editorVideoPreview.load();
             editorVideoPreview.style.display = 'none';
         }
         if (editorAudioPreviewBox) {
@@ -1688,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'video' && url) {
-            setVideoMediaSource(editorVideoPreview, url);
+            editorVideoPreview.src = url;
             editorVideoPreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'audio' && url) {
@@ -1725,7 +1680,6 @@ document.addEventListener('DOMContentLoaded', () => {
         tempMediaUrl = chap.media_url || '';
         tempMediaType = chap.media_type || 'none';
         tempMediaName = chap.media_name || '';
-        tempStoragePath = chap.storage_path || '';
 
         if (tempMediaType !== 'none' && tempMediaUrl) {
             if (currentMediaText) currentMediaText.textContent = `Attached: [${tempMediaType.toUpperCase()}] ${tempMediaName || 'Media File'}`;
@@ -1736,7 +1690,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Live visual preview
-        updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName, tempStoragePath);
+        updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
 
         // Highlight active chapter button (or re-render page if out of current window)
         const activePage = Math.floor(stepIdx / STUDIO_CHAPS_PER_PAGE);
@@ -1974,11 +1928,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     tempMediaUrl = data.url;
                     tempMediaType = data.media_type;
                     tempMediaName = data.filename;
-                    tempStoragePath = data.storage_path || '';
 
                     if (currentMediaText) currentMediaText.textContent = `Attached: [${data.media_type.toUpperCase()}] ${data.filename}`;
                     if (adminRemoveMediaBtn) adminRemoveMediaBtn.style.display = 'inline-flex';
-                    updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName, tempStoragePath);
+                    updateEditorMediaPreview(tempMediaType, tempMediaUrl, tempMediaName);
                     showToast(`Media attached: ${data.filename} ✦`);
                 } else {
                     const errorMsg = data.detail || 'Media upload failed. Ensure Supabase credentials are configured.';
@@ -2002,10 +1955,9 @@ document.addEventListener('DOMContentLoaded', () => {
             tempMediaUrl = '';
             tempMediaType = 'none';
             tempMediaName = '';
-            tempStoragePath = '';
             if (currentMediaText) currentMediaText.textContent = 'No media attached';
             adminRemoveMediaBtn.style.display = 'none';
-            updateEditorMediaPreview('none', '', '', '');
+            updateEditorMediaPreview('none', '', '');
             showToast('Media detached. Click Save to apply changes.');
         });
     }
@@ -2015,7 +1967,6 @@ document.addEventListener('DOMContentLoaded', () => {
         adminChapterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const stepIdx = parseInt(adminCurrentStepIndex.value, 10);
-            const currentChap = MILESTONES[stepIdx] || {};
             const payload = {
                 step_index: stepIdx,
                 badge: adminCardBadge.value.trim(),
@@ -2025,8 +1976,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 theme: adminCardTheme.value,
                 media_type: tempMediaType || 'none',
                 media_url: tempMediaUrl || '',
-                media_name: tempMediaName || '',
-                storage_path: (tempStoragePath !== undefined && tempStoragePath !== '') ? tempStoragePath : (currentChap.storage_path || '')
+                media_name: tempMediaName || ''
             };
 
             try {
