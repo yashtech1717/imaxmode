@@ -1222,13 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         videoEl.pause();
-        videoEl.setAttribute('preload', 'metadata');
-        videoEl.setAttribute('playsinline', '');
-        videoEl.setAttribute('webkit-playsinline', '');
-        videoEl.setAttribute('controls', '');
         videoEl.preload = 'metadata';
-        videoEl.playsInline = true;
-        videoEl.controls = true;
         videoEl.src = rawUrl;
         videoEl.load();
     }
