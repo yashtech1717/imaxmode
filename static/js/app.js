@@ -1256,17 +1256,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!data) return { primaryUrl: '', fallbackUrl: '' };
         const raw = (data.media_url || '').trim();
         const path = (data.storage_path || '').trim();
+        const direct = (data.direct_url || '').trim();
+        const stream = (data.stream_url || '').trim();
 
-        // The RFC 7233 proxy endpoint is the safest, most reliable streaming source:
-        // - Authenticated via server with Supabase key
-        // - No CORS or anonymous access restrictions
-        // - Handles HTTP 206 Partial Content byte ranges smoothly
-        const proxyUrl = `/api/media/stream?url=${encodeURIComponent(path || raw)}`;
-        const directUrl = raw;
+        // 1. Direct Supabase Storage URL (Primary: native HTML5 video streaming directly from Supabase CDN)
+        let directUrl = '';
+        if (direct && direct.startsWith('http')) {
+            directUrl = direct;
+        } else if (raw && raw.startsWith('http') && !raw.includes('/api/media/stream')) {
+            directUrl = raw;
+        } else if (stream && stream.startsWith('http') && !stream.includes('/api/media/stream')) {
+            directUrl = stream;
+        } else if (path) {
+            const cleanKey = path.replace(/^\/+/, '');
+            const objectPath = cleanKey.startsWith('memories/') ? cleanKey : `memories/${cleanKey}`;
+            directUrl = `https://vkzzdnepmwhsnzmeozxr.supabase.co/storage/v1/object/public/${objectPath}`;
+        }
 
-        // Use stream_url if provided by backend, else proxyUrl
-        const primary = data.stream_url || proxyUrl;
-        const fallback = (primary === proxyUrl) ? directUrl : proxyUrl;
+        // 2. Server-side proxy URL (Fallback: used only if direct CDN access is ever restricted)
+        const proxyUrl = data.proxy_url || `/api/media/stream?url=${encodeURIComponent(path || raw || directUrl)}`;
+
+        const primary = directUrl || proxyUrl;
+        const fallback = (primary !== proxyUrl) ? proxyUrl : '';
 
         return { primaryUrl: primary, fallbackUrl: fallback };
     }
@@ -1823,8 +1834,10 @@ document.addEventListener('DOMContentLoaded', () => {
             editorImagePreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'video' && url) {
-            const streamUrl = `/api/media/stream?url=${encodeURIComponent(url)}`;
-            setVideoMediaSource(editorVideoPreview, streamUrl, url);
+            const isDirectHttp = url.startsWith('http://') || url.startsWith('https://');
+            const primaryUrl = isDirectHttp ? url : `/api/media/stream?url=${encodeURIComponent(url)}`;
+            const fallbackUrl = isDirectHttp ? `/api/media/stream?url=${encodeURIComponent(url)}` : '';
+            setVideoMediaSource(editorVideoPreview, primaryUrl, fallbackUrl);
             editorVideoPreview.style.display = 'block';
             editorMediaPreviewWrap.style.display = 'block';
         } else if (normType === 'audio' && url) {

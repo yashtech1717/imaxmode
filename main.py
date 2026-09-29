@@ -27,6 +27,7 @@ from cloud_storage import (
     check_storage_health,
     is_storage_configured,
     get_storage_stream_info,
+    get_direct_public_url,
     extract_storage_key
 )
 from db import (
@@ -267,9 +268,13 @@ def fetch_content(is_admin: bool = False):
     for chap in chapters:
         murl = chap.get("media_url") or ""
         spath = chap.get("storage_path") or ""
-        target = spath or murl
+        target = murl or spath
         if target:
-            chap["stream_url"] = f"/api/media/stream?url={quote(target, safe='')}"
+            direct_url = get_direct_public_url(target)
+            chap["direct_url"] = direct_url
+            chap["media_url"] = direct_url
+            chap["stream_url"] = direct_url
+            chap["proxy_url"] = f"/api/media/stream?url={quote(spath or murl, safe='')}"
     return {
         "status": "success",
         "config": get_site_config(),
@@ -347,11 +352,14 @@ async def upload_media_file(file: UploadFile = File(...)):
     )
 
     from urllib.parse import quote
+    direct_url = result["url"]
     return {
         "status": "success",
-        "url": result["url"],
+        "url": direct_url,
         "storage_path": result.get("storage_path", ""),
-        "stream_url": f"/api/media/stream?url={quote(result.get('storage_path') or result['url'], safe='')}",
+        "direct_url": direct_url,
+        "stream_url": direct_url,
+        "proxy_url": f"/api/media/stream?url={quote(result.get('storage_path') or result['url'], safe='')}",
         "media_type": result["media_type"],
         "mime_type": result.get("mime_type", ""),
         "filename": result["filename"],

@@ -375,6 +375,31 @@ def extract_storage_key(url_or_path: str) -> Tuple[str, str]:
     return bucket, clean_s
 
 
+def get_direct_public_url(url_or_path: str) -> str:
+    """
+    Returns the direct, public Supabase CDN URL for a storage object.
+    Bypasses the FastAPI/Render server so the browser communicates directly
+    with Supabase Storage for native HTML5 video buffering and seeking.
+    """
+    if not url_or_path:
+        return ""
+    clean = url_or_path.strip()
+    if clean.startswith("http://") or clean.startswith("https://"):
+        return clean
+
+    url = get_supabase_url()
+    if not url:
+        return clean
+
+    bucket, object_key = extract_storage_key(clean)
+    if not (bucket and object_key):
+        return clean
+
+    clean_key = "/".join(p for p in object_key.split("/") if p and p not in [".", ".."])
+    return f"{url}/storage/v1/object/public/{bucket}/{clean_key}"
+
+
+
 def create_signed_url(url_or_path: str, expires_in: int = 86400) -> Optional[str]:
     """Generates an authenticated Supabase signed URL valid for direct browser streaming."""
     url = get_supabase_url()

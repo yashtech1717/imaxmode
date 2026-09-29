@@ -512,8 +512,13 @@ class TestMockedCloudEndpoints(unittest.TestCase):
         data = res.json()
         chap = data["chapters"][0]
         self.assertIn("stream_url", chap)
-        self.assertTrue(chap["stream_url"].startswith("/api/media/stream?url="))
+        self.assertIn("direct_url", chap)
+        self.assertIn("proxy_url", chap)
+        self.assertTrue(chap["stream_url"].startswith("http"))
+        self.assertTrue(chap["direct_url"].startswith("http"))
+        self.assertTrue(chap["proxy_url"].startswith("/api/media/stream?url="))
         self.assertIn("memories", chap["stream_url"])
+        self.assertIn("memories", chap["proxy_url"])
 
 
 if __name__ == "__main__":
